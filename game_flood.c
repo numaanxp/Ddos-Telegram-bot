@@ -1,4 +1,3 @@
-cat > game_flood.c << 'EOF'
 /*
 Game Server Flood - UDP Custom
 Compile: gcc -o game_flood game_flood.c -pthread -O3
@@ -170,4 +169,3 @@ int main(int argc, char *argv[]) {
     }
     return 0;
 }
-EOF
