@@ -374,8 +374,3 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-# 2. Compile with maximum optimization
-#// gcc -O3 -march=native -mtune=native -funroll-loops -fomit-frame-pointer \
- #   -ffast-math -pipe -pthread -o death_spasm death_spasm.c
-
-# 3. Set executable
